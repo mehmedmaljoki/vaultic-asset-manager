@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>Offline Asset Manager</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json"/>
+  <meta name="theme-color" content="#f8f5f0" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#1a1a20" media="(prefers-color-scheme: dark)"/>
+
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Assets"/>
+  <link rel="apple-touch-icon" href="icon-192.svg"/>
+
+  <!-- Android -->
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="application-name" content="Asset Manager"/>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'DM Sans', sans-serif; }
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh;
+           background: oklch(16% 0.015 250); transition: background 0.3s; }
+    html.dark body { background: oklch(10% 0.01 250); }
+    ::-webkit-scrollbar { display: none; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    input[type=number] { -moz-appearance: textfield; }
+    * { -webkit-tap-highlight-color: transparent; }
+    a { color: inherit; }
+
+    .phone-shell {
+      width: 390px; height: 844px;
+      border-radius: 48px;
+      box-shadow: 0 0 0 10px oklch(14% 0.01 70), 0 0 0 12px oklch(30% 0.01 70), 0 40px 80px rgba(0,0,0,0.55);
+      overflow: hidden; position: relative;
+      display: flex; flex-direction: column;
+      background: oklch(97.5% 0.006 70);
+      transition: background 0.3s;
+    }
+    html.dark .phone-shell { background: oklch(13% 0.01 250); }
+
+    .phone-notch {
+      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 120px; height: 34px;
+      background: oklch(14% 0.01 70); border-radius: 0 0 20px 20px; z-index: 100;
+    }
+    .phone-status {
+      position: absolute; top: 10px; left: 24px; right: 24px;
+      display: flex; justify-content: space-between; align-items: center;
+      z-index: 99; pointer-events: none;
+    }
+    .phone-status .time { font-size: 14px; font-weight: 700; color: oklch(18% 0.01 70); letter-spacing: -0.3px; }
+    .phone-status .icons { display: flex; gap: 5px; align-items: center; }
+    .phone-status .icons span { font-size: 12px; color: oklch(25% 0.01 70); }
+    html.dark .phone-status .time { color: oklch(88% 0.005 70); }
+    html.dark .phone-status .icons span { color: oklch(75% 0.01 70); }
+
+    .phone-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+    .phone-home {
+      height: 34px; display: flex; align-items: center; justify-content: center;
+      background: #fff; flex-shrink: 0; transition: background 0.3s;
+    }
+    html.dark .phone-home { background: oklch(18% 0.012 250); }
+    .phone-home::after {
+      content: ''; width: 134px; height: 5px;
+      background: oklch(20% 0.01 70); border-radius: 3px; opacity: 0.2;
+    }
+    html.dark .phone-home::after { background: oklch(80% 0.005 70); opacity: 0.25; }
+
+    #root { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+    /* ── Mobile: full-bleed, safe areas ── */
+    @media (max-width: 430px) {
+      body { background: oklch(97.5% 0.006 70); align-items: flex-start; }
+      html.dark body { background: oklch(13% 0.01 250); }
+      .phone-shell {
+        width: 100vw; height: 100dvh;
+        border-radius: 0; box-shadow: none;
+        /* safe area padding for notch / Dynamic Island / Android camera */
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+      }
+      .phone-notch { display: none; }
+      .phone-home  { display: none; }
+      .phone-status { display: none; }
+    }
+
+    /* ── Android ripple / tap feedback ── */
+    button, [role=button] {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    /* ── Prevent text resize on orientation change (iOS) ── */
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+    /* ── Smooth momentum scroll on iOS ── */
+    .phone-content > #root > div > div:first-child {
+      -webkit-overflow-scrolling: touch;
+    }
+  </style>
+</head>
+<body>
+  <div class="phone-shell">
+    <div class="phone-notch"></div>
+    <div class="phone-status">
+      <span class="time" id="clock">9:41</span>
+      <div class="icons"><span>●●●</span><span>WiFi</span><span>▮▮▮</span></div>
+    </div>
+    <div class="phone-content">
+      <div id="root"></div>
+    </div>
+    <div class="phone-home"></div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="i18n.js?v=2"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="App.jsx"></script>
+  <script type="text/babel" src="Dashboard.jsx"></script>
+  <script type="text/babel" src="Assets.jsx"></script>
+  <script type="text/babel" src="Zakat.jsx"></script>
+  <script type="text/babel" src="Debts.jsx"></script>
+  <script type="text/babel" src="Settings.jsx"></script>
+
+  <script type="text/babel">
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "language": "en",
+      "themeMode": "system",
+      "currency": "EUR",
+      "privacyMode": false,
+      "accentColor": "oklch(52% 0.16 145)",
+      "fontScale": 0.95,
+      "compactCards": true
+    }/*EDITMODE-END*/;
+
+    function updateClock() {
+      const n = new Date();
+      document.getElementById('clock').textContent =
+        n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');
+    }
+    updateClock(); setInterval(updateClock, 10000);
+
+    function AppWithTweaks() {
+      const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      if (!tweaks) return null;
+
+      React.useEffect(() => {
+        document.documentElement.style.fontSize = `${(tweaks.fontScale||1)*100}%`;
+      }, [tweaks.fontScale]);
+
+      const lang = tweaks.language || 'en';
+      const tFn  = key => I18N.t(key, lang);
+      const langOptions = I18N.LANGS.map(l => ({ value:l.code, label:l.nativeName }));
+      const currencyOptions = (typeof CURRENCIES !== 'undefined' ? CURRENCIES : [])
+        .map(c => ({ value:c.code, label:`${c.symbol} ${c.code}` }));
+
+      return (
+        <React.Fragment>
+          <App
+            language={lang}
+            themeMode={tweaks.themeMode || 'system'}
+            currency={tweaks.currency || 'EUR'}
+            privacyMode={tweaks.privacyMode || false}
+            accentColor={tweaks.accentColor}
+            compactCards={tweaks.compactCards}
+          />
+          <TweaksPanel>
+            <TweakSection title={tFn('settings_appearance')}>
+              <TweakColor id="accentColor" label={tFn('settings_accent')} value={tweaks.accentColor} onChange={v=>setTweak('accentColor',v)}/>
+              <TweakSlider id="fontScale" label={tFn('settings_text_scale')} value={tweaks.fontScale} min={0.8} max={1.2} step={0.05} onChange={v=>setTweak('fontScale',v)}/>
+              <TweakRadio id="themeMode" label={tFn('settings_theme')}
+                value={tweaks.themeMode}
+                options={[
+                  {value:'light', label:tFn('settings_light')},
+                  {value:'dark',  label:tFn('settings_dark')},
+                  {value:'system',label:tFn('settings_system')},
+                ]}
+                onChange={v=>setTweak('themeMode',v)}
+              />
+              <TweakToggle id="privacyMode" label={tFn('settings_privacy')||'Privacy Mode'} value={tweaks.privacyMode} onChange={v=>setTweak('privacyMode',v)}/>
+            </TweakSection>
+            <TweakSection title={tFn('settings_language')}>
+              <TweakSelect id="language" label={tFn('settings_language')} value={tweaks.language} options={langOptions} onChange={v=>setTweak('language',v)}/>
+              <TweakSelect id="currency" label={tFn('settings_currency')||'Currency'} value={tweaks.currency} options={currencyOptions} onChange={v=>setTweak('currency',v)}/>
+            </TweakSection>
+            <TweakSection title={tFn('settings_layout')}>
+              <TweakToggle id="compactCards" label={tFn('settings_compact')} value={tweaks.compactCards} onChange={v=>setTweak('compactCards',v)}/>
+            </TweakSection>
+          </TweaksPanel>
+        </React.Fragment>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<AppWithTweaks/>);
+  </script>
+
+  <template id="__bundler_thumbnail">
+    <svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+      <rect width="120" height="80" fill="oklch(13% 0.01 250)"/>
+      <rect x="20" y="15" width="35" height="22" rx="4" fill="oklch(52% 0.16 145)" opacity="0.9"/>
+      <rect x="65" y="15" width="35" height="22" rx="4" fill="oklch(52% 0.16 230)" opacity="0.6"/>
+      <rect x="20" y="43" width="80" height="6" rx="3" fill="oklch(52% 0.16 145)" opacity="0.4"/>
+      <rect x="20" y="55" width="55" height="6" rx="3" fill="oklch(52% 0.16 145)" opacity="0.2"/>
+    </svg>
+  </template>
+</body>
+</html>

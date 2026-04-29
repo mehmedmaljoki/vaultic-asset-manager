@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>Asset Manager</title>
+
+  <!-- PWA manifest (inline) -->
+  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Asset+Manager%22%2C%22short_name%22%3A%22Assets%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f8f5f0%22%2C%22theme_color%22%3A%22%234CAF84%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg+xmlns%3D%2527http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%2527+viewBox%3D%270+0+192+192%2527%253E%253Crect+width%3D%2527192%2527+height%3D%2527192%2527+rx%3D%252740%2527+fill%3D%2527%25234CAF84%2527%2F%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%2C%22purpose%22%3A%22any+maskable%22%7D%5D%7D"/>
+
+  <meta name="theme-color" content="#f8f5f0" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#1a1a20" media="(prefers-color-scheme: dark)"/>
+
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Assets"/>
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%234CAF84'/%3E%3Crect x='36' y='60' width='108' height='72' rx='12' stroke='white' stroke-width='8' fill='none'/%3E%3Cpath d='M60 60V48a12 12 0 0112-12h36a12 12 0 0112 12v12' stroke='white' stroke-width='8' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='90' cy='96' r='12' fill='white'/%3E%3C/svg%3E"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="application-name" content="Asset Manager"/>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'DM Sans', sans-serif; }
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    ::-webkit-scrollbar { display: none; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    input[type=number] { -moz-appearance: textfield; }
+    * { -webkit-tap-highlight-color: transparent; }
+    button, [role=button] { touch-action: manipulation; cursor: pointer; }
+
+    body {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh;
+      background: oklch(14% 0.015 250);
+      transition: background 0.3s;
+    }
+    html.dark body { background: oklch(9% 0.01 250); }
+
+    /* ── Phone shell (desktop preview) ── */
+    .shell {
+      width: 390px; height: 844px;
+      border-radius: 50px;
+      box-shadow:
+        0 0 0 10px oklch(14% 0.01 70),
+        0 0 0 12px oklch(28% 0.01 70),
+        0 50px 100px rgba(0,0,0,0.65);
+      overflow: hidden; position: relative;
+      display: flex; flex-direction: column;
+      background: oklch(97.5% 0.006 70);
+      transition: background 0.3s;
+    }
+    html.dark .shell { background: oklch(13% 0.01 250); }
+
+    .notch {
+      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 126px; height: 36px;
+      background: oklch(12% 0.01 70); border-radius: 0 0 22px 22px; z-index: 100;
+    }
+    .status-bar {
+      position: absolute; top: 11px; left: 26px; right: 26px;
+      display: flex; justify-content: space-between; align-items: center;
+      z-index: 99; pointer-events: none;
+    }
+    .status-bar .st { font-size: 13px; font-weight: 700; color: oklch(18% 0.01 70); letter-spacing: -0.3px; }
+    .status-bar .si { display: flex; gap: 5px; align-items: center; font-size: 12px; color: oklch(25% 0.01 70); }
+    html.dark .status-bar .st { color: oklch(88% 0.005 70); }
+    html.dark .status-bar .si { color: oklch(72% 0.01 70); }
+
+    .shell-inner { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+    #root { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+    .home-bar {
+      height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .home-bar::after {
+      content: ''; width: 134px; height: 5px;
+      background: oklch(20% 0.01 70); border-radius: 3px; opacity: 0.18;
+    }
+    html.dark .home-bar::after { background: oklch(80% 0.005 70); opacity: 0.22; }
+
+    /* ── Mobile: full-bleed ── */
+    @media (max-width: 430px) {
+      body {
+        background: oklch(97.5% 0.006 70);
+        align-items: flex-start; justify-content: flex-start;
+      }
+      html.dark body { background: oklch(13% 0.01 250); }
+      .shell {
+        width: 100vw; height: 100dvh;
+        border-radius: 0; box-shadow: none;
+        /* Top safe area (notch / Dynamic Island / status bar) */
+        padding-top: env(safe-area-inset-top);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+        /* Bottom handled by the tab-bar class below */
+      }
+      .notch    { display: none; }
+      .home-bar { display: none; }
+      .status-bar { display: none; }
+      /* Tab bar grows into safe area on iPhone so background covers home indicator */
+      .tab-bar { padding-bottom: max(4px, env(safe-area-inset-bottom)) !important; }
+    }
+
+    /* iOS momentum scroll */
+    .scroll-view { -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
+
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(10px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+    @keyframes slideUp {
+      from { opacity:0; transform:translateY(28px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="notch"></div>
+    <div class="status-bar">
+      <span class="st" id="clock">9:41</span>
+      <div class="si"><span>●●●</span><span>WiFi</span><span>▮▮▮</span></div>
+    </div>
+    <div class="shell-inner">
+      <div id="root"></div>
+    </div>
+    <div class="home-bar"></div>
+  </div>
+
+<!-- ══════════════════════════════════════ Data + seed -->
+<script>
+const MOCK_PRICES = {
+  gold:60.50, silver:0.82, platinum:29.80, palladium:38.40,
+  bitcoin:52340, ethereum:2810, solana:142, bnb:385,
+  NISAB_SILVER_G:612.36, NISAB_GOLD_G:85,
+};
+
+const CATEGORIES = [
+  { id:'metals',      name:'Metals',      icon:'◈', color:'#b8972a' },
+  { id:'money',       name:'Cash & Bank', icon:'◉', color:'#2a8a5a' },
+  { id:'real_estate', name:'Real Estate', icon:'⌂', color:'#4a60a8' },
+  { id:'vehicle',     name:'Vehicle',     icon:'◐', color:'#7a50a8' },
+  { id:'crypto',      name:'Crypto',      icon:'◆', color:'#d85020' },
+  { id:'jewelry',     name:'Jewelry',     icon:'◇', color:'#b830a0' },
+  { id:'collectibles',name:'Collectibles',icon:'◈', color:'#a06030' },
+];
+
+const KEYS = { ASSETS:'oam_assets', HISTORY:'oam_history', DEBTS:'oam_debts' };
+function load(k)   { try{ const r=localStorage.getItem(k); return r?JSON.parse(r):null; }catch(e){return null;} }
+function persist(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+
+function getAssets()  { return load(KEYS.ASSETS)||[]; }
+function getHistory() { return load(KEYS.HISTORY)||[]; }
+function getDebts()   { return load(KEYS.DEBTS)||[]; }
+
+function calcValue(a) {
+  if(a.type==='metals') return (a.quantity||0)*(MOCK_PRICES[a.subtype]||0);
+  if(a.type==='crypto') return (a.quantity||0)*(MOCK_PRICES[a.subtype]||0);
+  return a.value||0;
+}
+function getTotalWorth(arr){ return (arr||getAssets()).reduce((s,a)=>s+calcValue(a),0); }
+
+function addAsset(data){
+  const assets=getAssets();
+  assets.push({...data,id:Date.now().toString(),createdAt:new Date().toISOString()});
+  persist(KEYS.ASSETS,assets); snapHistory();
+}
+function addDebt(data){
+  const debts=getDebts();
+  debts.push({...data,id:Date.now().toString(),createdAt:new Date().toISOString()});
+  persist(KEYS.DEBTS,debts);
+}
+function snapHistory(){
+  const h=getHistory();
+  h.push({date:new Date().toISOString(),total:getTotalWorth()});
+  if(h.length>730) h.shift();
+  persist(KEYS.HISTORY,h);
+}
+
+function seedDemo(){
+  if(getAssets().length>0) return;
+  [
+    {type:'metals',subtype:'gold',   name:'Gold Bars',      quantity:50,  unit:'g'},
+    {type:'metals',subtype:'silver', name:'Silver Coins',   quantity:800, unit:'g'},
+    {type:'crypto',subtype:'bitcoin',name:'Bitcoin',        quantity:0.25,unit:'BTC'},
+    {type:'crypto',subtype:'ethereum',name:'Ethereum',      quantity:2,   unit:'ETH'},
+    {type:'money',                   name:'Savings Account',value:8500},
+    {type:'real_estate',             name:'Apartment',      value:180000},
+    {type:'vehicle',                 name:'Car',            value:14000},
+    {type:'jewelry',                 name:'Gold Ring',      value:1200},
+  ].forEach(addAsset);
+  [
+    {direction:'owed_to_me',name:'Ali Hassan',amount:500, note:'Personal loan'},
+    {direction:'owed_to_me',name:'Sara Malik',amount:200, note:'Borrowed cash'},
+    {direction:'i_owe',     name:'Bank Loan', amount:3500,note:'Personal finance'},
+  ].forEach(addDebt);
+  const base=getTotalWorth();
+  const h=[];
+  for(let i=59;i>=1;i--){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const n=1+(Math.sin(i*0.4)*0.03+(Math.random()-0.5)*0.04);
+    h.push({date:d.toISOString(),total:base*n});
+  }
+  h.push({date:new Date().toISOString(),total:base});
+  persist(KEYS.HISTORY,h);
+}
+
+function formatCurrency(n,currency){
+  try{
+    return new Intl.NumberFormat('de-DE',{
+      style:'currency',currency:currency||'EUR',maximumFractionDigits:0
+    }).format(n||0);
+  }catch(e){ return '€'+(n||0).toFixed(0); }
+}
+</script>
+
+<!-- ══════════════════════════════════════ Dashboard App -->
+<script type="text/babel">
+const {useState,useEffect,useCallback,useMemo}=React;
+
+/* ── Color tokens (exact match from App.jsx) ─────────────────────────────── */
+const LIGHT={
+  bg:'oklch(97.5% 0.006 70)', sur:'#ffffff', sur2:'oklch(96% 0.006 70)',
+  inp:'oklch(98.5% 0.003 70)', hov:'oklch(94% 0.005 70)',
+  bdr:'oklch(92% 0.008 70)', bdr2:'oklch(80% 0.008 70)',
+  tx:'oklch(15% 0.01 70)', tx2:'oklch(55% 0.01 70)', tx3:'oklch(65% 0.01 70)', tx4:'oklch(30% 0.01 70)',
+  acc:'oklch(52% 0.16 145)', accTx:'oklch(38% 0.14 145)', accBg:'oklch(93% 0.07 145)',
+  red:'oklch(52% 0.16 25)',  redTx:'oklch(38% 0.14 25)',  redBg:'oklch(93% 0.06 25)',
+  blu:'oklch(52% 0.16 230)', bluTx:'oklch(38% 0.14 230)', bluBg:'oklch(93% 0.06 230)',
+  gld:'oklch(62% 0.14 80)',
+  shd:'0 1px 3px rgba(0,0,0,0.06)', shd2:'0 2px 12px rgba(0,0,0,0.10)',
+  navBg:'rgba(255,255,255,0.96)', overlay:'rgba(0,0,0,0.3)',
+};
+const DARK={
+  bg:'oklch(13% 0.01 250)', sur:'oklch(18% 0.012 250)', sur2:'oklch(22% 0.01 250)',
+  inp:'oklch(22% 0.012 250)', hov:'oklch(27% 0.01 250)',
+  bdr:'oklch(32% 0.01 250)', bdr2:'oklch(38% 0.01 250)',
+  tx:'oklch(95% 0.005 70)', tx2:'oklch(60% 0.01 70)', tx3:'oklch(48% 0.01 70)', tx4:'oklch(80% 0.005 70)',
+  acc:'oklch(65% 0.16 145)', accTx:'oklch(74% 0.12 145)', accBg:'oklch(22% 0.08 145)',
+  red:'oklch(65% 0.16 25)',  redTx:'oklch(74% 0.12 25)',  redBg:'oklch(22% 0.07 25)',
+  blu:'oklch(65% 0.16 230)', bluTx:'oklch(74% 0.12 230)', bluBg:'oklch(22% 0.07 230)',
+  gld:'oklch(72% 0.14 80)',
+  shd:'0 1px 3px rgba(0,0,0,0.35)', shd2:'0 2px 12px rgba(0,0,0,0.5)',
+  navBg:'rgba(18,18,22,0.96)', overlay:'rgba(0,0,0,0.55)',
+};
+
+/* ── Dashboard (faithful to Dashboard.jsx design) ───────────────────────── */
+function DashboardScreen({th,assets,history,debts,fmt}) {
+  const total = getTotalWorth(assets);
+  const byCategory = CATEGORIES.map(cat=>({
+    ...cat,
+    value: assets.filter(a=>a.type===cat.id).reduce((s,a)=>s+calcValue(a),0),
+    count: assets.filter(a=>a.type===cat.id).length,
+  })).filter(c=>c.value>0).sort((a,b)=>b.value-a.value);
+
+  const totOwed = debts.filter(d=>d.direction==='owed_to_me').reduce((s,d)=>s+d.amount,0);
+  const totIowe = debts.filter(d=>d.direction==='i_owe').reduce((s,d)=>s+d.amount,0);
+  const netWorth = total + totOwed - totIowe;
+
+  /* Sparkline */
+  const chartData = history.slice(-60);
+  const chartMin = chartData.length ? Math.min(...chartData.map(h=>h.total))*0.98 : 0;
+  const chartMax = chartData.length ? Math.max(...chartData.map(h=>h.total))*1.02 : 1;
+  const chartRange = chartMax - chartMin || 1;
+  const W=320, H=80;
+  const pts = chartData.map((h,i)=>{
+    const x=(i/(chartData.length-1||1))*W;
+    const y=H-((h.total-chartMin)/chartRange)*H;
+    return [x,y];
+  });
+  const pathD = pts.map((p,i)=>(i===0?`M${p[0].toFixed(1)},${p[1].toFixed(1)}`:`L${p[0].toFixed(1)},${p[1].toFixed(1)}`)).join(' ');
+  const areaD = pathD+` L${W},${H} L0,${H} Z`;
+  const change = chartData.length>1
+    ? ((chartData[chartData.length-1].total-chartData[0].total)/chartData[0].total*100).toFixed(1) : 0;
+  const changePos = parseFloat(change)>=0;
+
+  /* Pie chart */
+  function buildPie(data,tot) {
+    const R=42,cx=52,cy=52; let angle=-Math.PI/2;
+    return data.map((seg,i)=>{
+      const frac=seg.value/tot, sweep=frac*2*Math.PI;
+      const x1=cx+R*Math.cos(angle), y1=cy+R*Math.sin(angle);
+      angle+=sweep;
+      const x2=cx+R*Math.cos(angle), y2=cy+R*Math.sin(angle);
+      const large=sweep>Math.PI?1:0;
+      return <path key={seg.id} d={`M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R} 0 ${large},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z`} fill={seg.color} opacity="0.85"/>;
+    });
+  }
+
+  return (
+    <div style={{paddingBottom:20}}>
+
+      {/* ── Header ─────────────────────────────────────────────────── */}
+      <div style={{padding:'52px 20px 20px',background:th.sur}}>
+        <div style={{fontSize:12,fontWeight:600,color:th.tx2,textTransform:'uppercase',letterSpacing:'1px',marginBottom:6}}>
+          Net Worth
+        </div>
+        <div style={{fontSize:36,fontWeight:800,color:th.tx,letterSpacing:'-1.5px',lineHeight:1}}>
+          {fmt(netWorth)}
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginTop:8}}>
+          <span style={{background:changePos?th.accBg:th.redBg,color:changePos?th.accTx:th.redTx,borderRadius:20,padding:'3px 10px',fontSize:12,fontWeight:700}}>
+            {changePos?'▲':'▼'} {Math.abs(change)}%
+          </span>
+          <span style={{fontSize:12,color:th.tx3}}>past 60 days</span>
+        </div>
+      </div>
+
+      {/* ── Sparkline ──────────────────────────────────────────────── */}
+      {chartData.length>2&&(
+        <div style={{background:th.sur,paddingBottom:16,marginBottom:12}}>
+          <svg width="100%" viewBox={`0 0 ${W} ${H+10}`} preserveAspectRatio="none" style={{display:'block'}}>
+            <defs>
+              <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={th.acc} stopOpacity="0.18"/>
+                <stop offset="100%" stopColor={th.acc} stopOpacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d={areaD} fill="url(#cg)"/>
+            <path d={pathD} fill="none" stroke={th.acc} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      )}
+
+      {/* ── 4 Summary cards ────────────────────────────────────────── */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,padding:'0 16px',marginBottom:16}}>
+        {[
+          {label:'Total Assets', value:fmt(total),    sub:`${assets.length} items`,  color:th.acc},
+          {label:'Net Worth',    value:fmt(netWorth),  sub:'Assets − debts',         color:th.tx},
+          {label:'Owed to me',   value:fmt(totOwed),   sub:'receivable',              color:th.blu},
+          {label:'I owe',        value:fmt(totIowe),   sub:'payable',                 color:th.red},
+        ].map(c=>(
+          <div key={c.label} style={{background:th.sur,borderRadius:16,padding:'14px 14px 12px',boxShadow:th.shd}}>
+            <div style={{fontSize:11,fontWeight:600,color:th.tx2,textTransform:'uppercase',letterSpacing:'0.6px',marginBottom:4}}>{c.label}</div>
+            <div style={{fontSize:18,fontWeight:800,color:c.color,letterSpacing:'-0.5px'}}>{c.value}</div>
+            <div style={{fontSize:11,color:th.tx3,marginTop:2}}>{c.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Category breakdown ──────────────────────────────────────── */}
+      <div style={{margin:'0 16px',background:th.sur,borderRadius:16,padding:'16px',boxShadow:th.shd}}>
+        <div style={{fontSize:13,fontWeight:700,color:th.tx,marginBottom:14,letterSpacing:'-0.2px'}}>
+          Portfolio Breakdown
+        </div>
+        <div style={{display:'flex',gap:16,alignItems:'center'}}>
+          {byCategory.length>0&&(
+            <svg width="104" height="104" viewBox="0 0 104 104" style={{flexShrink:0}}>
+              {buildPie(byCategory,total)}
+              <circle cx="52" cy="52" r="26" fill={th.sur}/>
+              <text x="52" y="49" textAnchor="middle" fontSize="9" fill={th.tx2} fontFamily="DM Sans,sans-serif" fontWeight="600">ASSETS</text>
+              <text x="52" y="62" textAnchor="middle" fontSize="10" fill={th.tx} fontFamily="DM Sans,sans-serif" fontWeight="700">{assets.length}</text>
+            </svg>
+          )}
+          <div style={{flex:1,display:'flex',flexDirection:'column',gap:8}}>
+            {byCategory.slice(0,5).map(cat=>(
+              <div key={cat.id}>
+                <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+                  <span style={{fontSize:12,fontWeight:600,color:th.tx4}}>{cat.name}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:th.tx}}>{fmt(cat.value)}</span>
+                </div>
+                <div style={{height:4,background:th.hov,borderRadius:4,overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${((cat.value/total)*100).toFixed(1)}%`,background:cat.color,borderRadius:4,transition:'width 0.6s ease'}}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Live prices ─────────────────────────────────────────────── */}
+      <div style={{margin:'12px 16px 0',background:th.sur,borderRadius:16,padding:'14px 16px',boxShadow:th.shd}}>
+        <div style={{fontSize:11,fontWeight:600,color:th.tx2,textTransform:'uppercase',letterSpacing:'0.6px',marginBottom:10}}>
+          Live Prices
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+          {[
+            {label:'Gold /g',   val:MOCK_PRICES.gold,    color:'#b8972a'},
+            {label:'Silver /g', val:MOCK_PRICES.silver,  color:'#808090'},
+            {label:'Bitcoin',   val:MOCK_PRICES.bitcoin,  color:'#d85020'},
+            {label:'Ethereum',  val:MOCK_PRICES.ethereum, color:'#5070d0'},
+          ].map(p=>(
+            <div key={p.label} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid '+th.bdr}}>
+              <span style={{fontSize:12,color:th.tx2}}>{p.label}</span>
+              <span style={{fontSize:13,fontWeight:700,color:p.color}}>{fmt(p.val)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+/* ── App shell ───────────────────────────────────────────────────────────── */
+function App() {
+  const [assets,setAssets]   = useState([]);
+  const [history,setHistory] = useState([]);
+  const [debts,setDebts]     = useState([]);
+  const [currency]           = useState('EUR');
+  const [sysDark,setSysDark] = useState(()=>window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  useEffect(()=>{
+    const mq=window.matchMedia('(prefers-color-scheme: dark)');
+    const h=e=>setSysDark(e.matches);
+    mq.addEventListener('change',h);
+    return ()=>mq.removeEventListener('change',h);
+  },[]);
+
+  const isDark = sysDark;
+  const th = isDark?DARK:LIGHT;
+
+  useEffect(()=>{
+    document.documentElement.classList.toggle('dark',isDark);
+    document.querySelectorAll('meta[name="theme-color"]').forEach(m=>{
+      const md=m.getAttribute('media')||'';
+      if(md.includes('light')) m.content=isDark?'#f8f5f0':'#f8f5f0';
+      if(md.includes('dark'))  m.content=isDark?'#1a1a20':'#1a1a20';
+    });
+  },[isDark]);
+
+  useEffect(()=>{
+    seedDemo();
+    setAssets(getAssets());
+    setHistory(getHistory());
+    setDebts(getDebts());
+  },[]);
+
+  const fmt = useCallback(n=>formatCurrency(n,currency),[currency]);
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:th.bg,fontFamily:"'DM Sans',sans-serif"}}>
+      <div className="scroll-view" style={{flex:1,overflowY:'auto',overflowX:'hidden'}}>
+        <DashboardScreen th={th} assets={assets} history={history} debts={debts} fmt={fmt}/>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+
+<!-- ══════════════════════════════════════ Clock + PWA hooks -->
+<script>
+/* Clock */
+(function tick(){
+  const el=document.getElementById('clock');
+  if(el){const n=new Date();el.textContent=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');}
+  setTimeout(tick,15000);
+})();
+
+/* Service Worker via blob (works over HTTPS / localhost) */
+if('serviceWorker' in navigator){
+  const sw=`
+    const C='oam-v1';
+    const CDN=[
+      'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap',
+      'https://unpkg.com/react@18.3.1/umd/react.production.min.js',
+      'https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js',
+      'https://unpkg.com/@babel/standalone@7.29.0/babel.min.js',
+    ];
+    self.addEventListener('install',e=>{
+      self.skipWaiting();
+      e.waitUntil(caches.open(C).then(c=>Promise.allSettled(CDN.map(u=>c.add(u).catch(()=>{})))));
+    });
+    self.addEventListener('activate',e=>e.waitUntil(clients.claim()));
+    self.addEventListener('fetch',e=>{
+      if(e.request.method!=='GET'||e.request.url.startsWith('chrome-extension')) return;
+      e.respondWith(
+        caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{
+          const u=e.request.url;
+          if(res&&res.status===200&&(u.includes('unpkg.com')||u.includes('fonts.g')||u.includes('googleapis'))){
+            const cl=res.clone(); caches.open(C).then(c=>c.put(e.request,cl));
+          }
+          return res;
+        }))
+      );
+    });
+  `;
+  try{
+    const blob=new Blob([sw],{type:'application/javascript'});
+    navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+  }catch(e){}
+}
+
+/* Android install prompt */
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;showBanner('android');});
+window.addEventListener('appinstalled',()=>removeBanner());
+
+/* iOS install hint (shown once, after 3s) */
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+if(isIOS&&!isStandalone&&!sessionStorage.getItem('oam_nb')){
+  setTimeout(()=>showBanner('ios'),3000);
+}
+
+function showBanner(platform){
+  if(document.getElementById('oam-nb')) return;
+  const dark=document.documentElement.classList.contains('dark');
+  const tx =dark?'oklch(95% 0.005 70)' :'oklch(15% 0.01 70)';
+  const tx2=dark?'oklch(60% 0.01 70)'  :'oklch(55% 0.01 70)';
+  const bg =dark?'oklch(22% 0.012 250)':'#ffffff';
+  const bd =dark?'oklch(32% 0.01 250)' :'oklch(90% 0.008 70)';
+  const b=document.createElement('div');
+  b.id='oam-nb';
+  Object.assign(b.style,{
+    position:'fixed',bottom:'72px',left:'12px',right:'12px',zIndex:'9998',
+    background:bg,borderRadius:'18px',padding:'14px 16px',
+    boxShadow:'0 8px 32px rgba(0,0,0,0.2)',border:'1px solid '+bd,
+    display:'flex',alignItems:'center',gap:'12px',
+    fontFamily:"'DM Sans',sans-serif",
+    animation:'slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1)',
+  });
+  b.innerHTML=`
+    <div style="font-size:26px;flex-shrink:0">📲</div>
+    <div style="flex:1">
+      <div style="font-size:13px;font-weight:700;color:${tx}">Install Asset Manager</div>
+      <div style="font-size:11px;color:${tx2};margin-top:3px">${platform==='ios'?'Tap ⎋ Share → "Add to Home Screen"':'Add to home screen for offline access'}</div>
+    </div>
+    <button id="oam-nb-btn" style="border:none;border-radius:11px;padding:${platform==='android'?'8px 14px':'5px 10px'};cursor:pointer;background:${platform==='android'?'oklch(52% 0.16 145)':'transparent'};color:${platform==='android'?'#fff':tx2};font-size:${platform==='android'?'12':'18'}px;font-weight:700;font-family:inherit;flex-shrink:0">${platform==='android'?'Install':'✕'}</button>
+  `;
+  document.getElementById('oam-nb-btn').onclick=()=>{
+    if(platform==='android'&&deferredPrompt){deferredPrompt.prompt();deferredPrompt=null;}
+    removeBanner();
+  };
+  document.body.appendChild(b);
+  const s=document.createElement('style');
+  s.textContent='@keyframes slideUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}';
+  document.head.appendChild(s);
+}
+function removeBanner(){
+  const b=document.getElementById('oam-nb');
+  if(b) b.remove();
+  sessionStorage.setItem('oam_nb','1');
+}
+</script>
+</body>
+</html>
