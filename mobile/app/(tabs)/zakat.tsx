@@ -82,7 +82,8 @@ function InfoSheet({ visible, onClose, th }: { visible: boolean; onClose: () => 
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function ZakatScreen() {
-  const { th, fmt, t } = useApp();
+  const { th, fmt, t, privacyMode } = useApp();
+  const blur = privacyMode ? '••••' : null;
 
   const [assets, setAssets] = useState<Asset[]>([]);
   const [nisabType, setNisabType] = useState<'silver' | 'gold'>('silver');
@@ -120,11 +121,11 @@ export default function ZakatScreen() {
   }
 
   const summaryRows = [
-    { label: 'Total assets',      val: fmt(totalWorth),     hi: false },
-    { label: 'Zakatable wealth',  val: fmt(zakatableTotal), hi: false },
-    { label: 'Nisab threshold',   val: fmt(nisabEur),       hi: false },
-    { label: 'Zakat rate',        val: '2.5%',              hi: false },
-    { label: 'Zakat due',         val: fmt(zakatDue),       hi: true  },
+    { label: 'Total assets',      val: blur ?? fmt(totalWorth),     hi: false },
+    { label: 'Zakatable wealth',  val: blur ?? fmt(zakatableTotal), hi: false },
+    { label: 'Nisab threshold',   val: blur ?? fmt(nisabEur),       hi: false },
+    { label: 'Zakat rate',        val: '2.5%',                      hi: false },
+    { label: 'Zakat due',         val: blur ?? fmt(zakatDue),       hi: true  },
   ];
 
   return (
@@ -164,14 +165,14 @@ export default function ZakatScreen() {
                 >
                   <Text style={[s.nisabBtnLabel, { color: active ? '#fff' : th.tx2 }]}>{n.label}</Text>
                   <Text style={[s.nisabBtnSub,   { color: active ? 'rgba(255,255,255,0.85)' : th.tx3 }]}>
-                    {n.sub} · {fmt(n.val)}
+                    {n.sub} · {blur ?? fmt(n.val)}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
           <Text style={[s.nisabNote, { color: th.tx2 }]}>
-            Current nisab ({nisabType}): <Text style={[s.nisabNoteStrong, { color: th.tx }]}>{fmt(nisabEur)}</Text>
+            Current nisab ({nisabType}): <Text style={[s.nisabNoteStrong, { color: th.tx }]}>{blur ?? fmt(nisabEur)}</Text>
           </Text>
         </View>
 
@@ -180,11 +181,12 @@ export default function ZakatScreen() {
           <Text style={s.resultLabel}>
             {aboveNisab ? 'ZAKAT DUE' : 'BELOW NISAB'}
           </Text>
-          <Text style={s.resultAmount}>{fmt(zakatDue)}</Text>
+          <Text style={s.resultAmount}>{blur ?? fmt(zakatDue)}</Text>
           <Text style={s.resultSub}>
-            {aboveNisab
-              ? `2.5% of ${fmt(zakatableTotal)} zakatable wealth`
-              : `${fmt(zakatableTotal)} is below threshold of ${fmt(nisabEur)}`}
+            {privacyMode ? '••••'
+              : aboveNisab
+                ? `2.5% of ${fmt(zakatableTotal)} zakatable wealth`
+                : `${fmt(zakatableTotal)} is below threshold of ${fmt(nisabEur)}`}
           </Text>
           {aboveNisab && (
             <View style={s.hawlBadge}>
@@ -210,7 +212,7 @@ export default function ZakatScreen() {
                   <Text style={[s.categoryName, { color: th.tx }]}>{g.name}</Text>
                 </View>
                 <View style={s.categoryRight}>
-                  <Text style={[s.categoryTotal, { color: th.tx }]}>{fmt(g.total)}</Text>
+                  <Text style={[s.categoryTotal, { color: th.tx }]}>{blur ?? fmt(g.total)}</Text>
                   <Toggle value={g.isZakatable} onChange={() => toggleOverride(g.id, g.isZakatable)} th={th} />
                 </View>
               </View>
@@ -219,7 +221,7 @@ export default function ZakatScreen() {
                   {g.rule.note} · {g.catAssets.length} item{g.catAssets.length !== 1 ? 's' : ''}
                   {g.isZakatable && g.total > 0 && (
                     <Text style={{ color: th.accTx, fontFamily: 'DMSans_700Bold' }}>
-                      {'  →  '}{fmt(g.total * 0.025)}
+                      {'  →  '}{blur ?? fmt(g.total * 0.025)}
                     </Text>
                   )}
                 </Text>

@@ -6,6 +6,7 @@ export interface Asset {
   quantity?: number;
   unit?: string;
   value?: number;
+  purchasedAt?: string;   // user-defined acquisition date
   createdAt: string;
   updatedAt?: string;
 }

@@ -44,11 +44,12 @@ const TECH_STACK = [
   { name: 'Expo Router',         role: 'Navigation' },
 ];
 
-const FEEDBACK_CATS = [
-  { id: 'feature', label: 'New Feature', icon: '✨' },
-  { id: 'bug',     label: 'Bug Report',  icon: '🐛' },
-  { id: 'ux',      label: 'UX / Design', icon: '🎨' },
-  { id: 'other',   label: 'Other',       icon: '💬' },
+// Feedback categories — labels resolved at render time via t()
+const FEEDBACK_CAT_IDS = [
+  { id: 'feature', key: 'settings_feedback_feature', icon: '✨' },
+  { id: 'bug',     key: 'settings_feedback_bug',     icon: '🐛' },
+  { id: 'ux',      key: 'settings_feedback_ux',      icon: '🎨' },
+  { id: 'other',   key: 'settings_feedback_other',   icon: '💬' },
 ];
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
@@ -334,7 +335,7 @@ export default function SettingsScreen() {
         </Section>
 
         {/* ── About ──────────────────────────────────────────────── */}
-        <Section title="About" th={th}>
+        <Section title={t('settings_about')} th={th}>
           {/* App identity */}
           <View style={[s.aboutHero, { borderBottomColor: th.bdr }]}>
             <View style={[s.appIcon, { backgroundColor: th.acc }]}>
@@ -391,42 +392,13 @@ export default function SettingsScreen() {
           )}
         </Section>
 
-        {/* ── Contact ────────────────────────────────────────────── */}
-        <Section title="Contact & Support" th={th}>
-          {[
-            { icon: 'mail-outline',   label: 'Email',    value: 'hello@assetmanager.app', url: 'mailto:hello@assetmanager.app', color: th.acc,    bg: th.accBg },
-            { icon: 'globe-outline',  label: 'Website',  value: 'assetmanager.app',        url: 'https://assetmanager.app',      color: th.blu,    bg: th.bluBg },
-            { icon: 'logo-twitter',   label: 'Twitter',  value: '@AssetManagerApp',         url: 'https://twitter.com/AssetManagerApp', color: th.tx, bg: th.hov },
-            { icon: 'chatbubble-outline', label: 'WhatsApp', value: 'Chat with us',        url: 'https://wa.me/?text=Hi,+I+need+help+with+Asset+Manager', color: th.acc, bg: th.accBg },
-          ].map((c, i, arr) => (
-            <Pressable
-              key={c.label}
-              onPress={() => Linking.openURL(c.url).catch(() => {})}
-              style={({ pressed }) => [
-                s.contactRow,
-                { opacity: pressed ? 0.7 : 1 },
-                i < arr.length - 1 && { borderBottomColor: th.bdr, borderBottomWidth: 0.5 },
-              ]}
-            >
-              <View style={[s.contactIcon, { backgroundColor: c.bg }]}>
-                <Ionicons name={c.icon as any} size={18} color={c.color} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.contactLabel, { color: th.tx }]}>{c.label}</Text>
-                <Text style={[s.contactValue, { color: th.tx3 }]}>{c.value}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={th.tx3} />
-            </Pressable>
-          ))}
-        </Section>
-
         {/* ── Feedback ───────────────────────────────────────────── */}
-        <Section title="Feature Requests & Feedback" th={th}>
+        <Section title={t('settings_feedback_title')} th={th}>
           {fbStatus === 'idle' ? (
             <View style={{ padding: 16 }}>
               {/* Category grid */}
               <View style={s.fbCatGrid}>
-                {FEEDBACK_CATS.map(c => {
+                {FEEDBACK_CAT_IDS.map(c => {
                   const active = fbCat === c.id;
                   return (
                     <Pressable
@@ -438,7 +410,7 @@ export default function SettingsScreen() {
                       ]}
                     >
                       <Text style={s.fbCatIcon}>{c.icon}</Text>
-                      <Text style={[s.fbCatLabel, { color: active ? th.accTx : th.tx2 }]}>{c.label}</Text>
+                      <Text style={[s.fbCatLabel, { color: active ? th.accTx : th.tx2 }]}>{t(c.key)}</Text>
                     </Pressable>
                   );
                 })}
@@ -447,7 +419,7 @@ export default function SettingsScreen() {
               {/* TextInput */}
               <TextInput
                 style={[s.fbTextarea, { borderColor: th.bdr, backgroundColor: th.inp, color: th.tx }]}
-                placeholder="Describe your idea or issue…"
+                placeholder="…"
                 placeholderTextColor={th.tx3}
                 value={fbText}
                 onChangeText={setFbText}
@@ -466,7 +438,7 @@ export default function SettingsScreen() {
                 ]}
               >
                 <Text style={[s.fbSubmitText, { color: fbText.length < 10 ? th.tx3 : '#fff' }]}>
-                  ✉  Submit via Email
+                  {t('settings_feedback_submit')}
                 </Text>
               </Pressable>
             </View>
@@ -476,16 +448,16 @@ export default function SettingsScreen() {
                 {fbCat === 'bug' ? '🐛' : fbCat === 'ux' ? '🎨' : fbCat === 'other' ? '💬' : '✨'}
               </Text>
               <Text style={[s.fbDoneTitle, { color: th.tx }]}>
-                {fbCat === 'bug' ? 'Bug reported!' : fbCat === 'ux' ? 'Design feedback received!' : 'Request sent!'}
+                {fbCat === 'bug' ? t('settings_feedback_done_bug') : fbCat === 'ux' ? t('settings_feedback_done_ux') : t('settings_feedback_done')}
               </Text>
               <Text style={[s.fbDoneSub, { color: th.tx2 }]}>
-                Thank you! We review feedback monthly and will get back to you.
+                {t('settings_feedback_thanks')}
               </Text>
               <Pressable
                 onPress={() => { setFbStatus('idle'); setFbText(''); }}
                 style={[s.fbDoneBtn, { backgroundColor: th.hov }]}
               >
-                <Text style={[s.fbDoneBtnText, { color: th.tx }]}>Submit another</Text>
+                <Text style={[s.fbDoneBtnText, { color: th.tx }]}>{t('settings_feedback_another')}</Text>
               </Pressable>
             </View>
           )}
@@ -589,12 +561,6 @@ const s = StyleSheet.create({
   creditRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   creditName:   { fontSize: 12, fontFamily: 'DMSans_700Bold' },
   creditRole:   { fontSize: 11, fontFamily: 'DMSans_400Regular' },
-
-  // Contact
-  contactRow:   { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  contactIcon:  { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  contactLabel: { fontSize: 13, fontFamily: 'DMSans_700Bold' },
-  contactValue: { fontSize: 11, fontFamily: 'DMSans_400Regular', marginTop: 2 },
 
   // Feedback
   fbCatGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },

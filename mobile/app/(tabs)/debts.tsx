@@ -77,12 +77,13 @@ function DebtCard({
   onAdjust: (delta: number, note: string) => void;
   th: Theme;
 }) {
+  const { fmt, t, privacyMode } = useApp();
+  const blur = privacyMode ? '••••' : null;
   const [adjustMode, setAdjustMode] = useState(false);
   const [adjustAmt,  setAdjustAmt]  = useState('');
   const [adjustNote, setAdjustNote] = useState('');
   const accent = isOwed ? th.acc : th.red;
   const accentBg = isOwed ? th.accBg2 : th.redBg2;
-  const fmt = (n: number) => formatCurrency(n);
 
   function submitAdjust(sign: 1 | -1) {
     const n = parseFloat(adjustAmt);
@@ -107,7 +108,7 @@ function DebtCard({
           <Text style={[s.cardNote, { color: th.tx3 }]} numberOfLines={1}>{debt.note || '—'}</Text>
         </View>
         <View style={s.cardRight}>
-          <Text style={[s.cardAmount, { color: accent }]}>{fmt(debt.amount)}</Text>
+          <Text style={[s.cardAmount, { color: accent }]}>{blur ?? fmt(debt.amount)}</Text>
           <Text style={[s.cardTx, { color: th.tx3 }]}>{debt.transactions?.length ?? 0} tx</Text>
         </View>
       </View>
@@ -115,9 +116,9 @@ function DebtCard({
       {/* Action strip */}
       <View style={[s.actionStrip, { borderTopColor: th.bdr }]}>
         {[
-          { label: adjustMode ? 'Cancel' : 'Adjust', onPress: () => { setAdjustMode(p => !p); setAdjustAmt(''); setAdjustNote(''); } },
-          { label: 'History', onPress: onDetail },
-          { label: 'Share',   onPress: onShare },
+          { label: adjustMode ? t('debt_cancel_adj') : t('debt_adjust'), onPress: () => { setAdjustMode(p => !p); setAdjustAmt(''); setAdjustNote(''); } },
+          { label: t('debt_history'), onPress: onDetail },
+          { label: t('debt_share'),   onPress: onShare },
         ].map(btn => (
           <Pressable
             key={btn.label}
@@ -135,7 +136,7 @@ function DebtCard({
           <View style={s.adjustInputs}>
             <TextInput
               style={[s.adjustInput, { borderColor: th.bdr, backgroundColor: th.inp, color: th.tx }]}
-              placeholder="Amount"
+              placeholder={t('debt_amount')}
               placeholderTextColor={th.tx3}
               keyboardType="decimal-pad"
               value={adjustAmt}
@@ -143,7 +144,7 @@ function DebtCard({
             />
             <TextInput
               style={[s.adjustInput, { borderColor: th.bdr, backgroundColor: th.inp, color: th.tx }]}
-              placeholder="Note"
+              placeholder={t('debt_note')}
               placeholderTextColor={th.tx3}
               value={adjustNote}
               onChangeText={setAdjustNote}
@@ -154,13 +155,13 @@ function DebtCard({
               onPress={() => submitAdjust(1)}
               style={({ pressed }) => [s.adjustBtn, { backgroundColor: pressed ? th.acc + 'cc' : th.acc }]}
             >
-              <Text style={s.adjustBtnText}>+ Increase</Text>
+              <Text style={s.adjustBtnText}>{t('debt_increase')}</Text>
             </Pressable>
             <Pressable
               onPress={() => submitAdjust(-1)}
               style={({ pressed }) => [s.adjustBtn, { backgroundColor: pressed ? th.red + 'cc' : th.red }]}
             >
-              <Text style={s.adjustBtnText}>− Decrease</Text>
+              <Text style={s.adjustBtnText}>{t('debt_decrease')}</Text>
             </Pressable>
           </View>
         </View>
@@ -171,11 +172,12 @@ function DebtCard({
 
 // ── Debt detail (transaction history) ────────────────────────────────────────
 function DebtDetail({ debt, th, onDelete }: { debt: Debt; th: Theme; onDelete: () => void }) {
+  const { fmt, t, privacyMode } = useApp();
+  const blur = privacyMode ? '••••' : null;
   const [confirmDel, setConfirmDel] = useState(false);
   const isOwed = debt.direction === 'owed_to_me';
   const accent  = isOwed ? th.acc : th.red;
   const accentBg = isOwed ? th.accBg : th.redBg;
-  const fmt = (n: number) => formatCurrency(n);
 
   return (
     <View>
@@ -186,42 +188,40 @@ function DebtDetail({ debt, th, onDelete }: { debt: Debt; th: Theme; onDelete: (
             {debt.name.charAt(0).toUpperCase()}
           </Text>
         </View>
-        <Text style={[s.detailAmount, { color: accent }]}>{fmt(debt.amount)}</Text>
+        <Text style={[s.detailAmount, { color: accent }]}>{blur ?? fmt(debt.amount)}</Text>
         <Text style={[s.detailSub, { color: th.tx2 }]}>
-          {debt.name} · {isOwed ? 'owes you' : 'you owe'}
+          {debt.name} · {isOwed ? t('debt_owes_you') : t('debt_you_owe')}
         </Text>
       </View>
 
-      {/* Transaction log */}
-      <Text style={[s.txLogTitle, { color: th.tx }]}>Transaction history</Text>
+      <Text style={[s.txLogTitle, { color: th.tx }]}>{t('debt_tx_history')}</Text>
       <View style={{ gap: 6, marginBottom: 20 }}>
         {[...(debt.transactions ?? [])].reverse().map((tx, i) => (
           <View key={tx.id ?? i} style={[s.txRow, { backgroundColor: th.bg }]}>
             <View>
-              <Text style={[s.txNote,  { color: th.tx4 }]}>{tx.note || 'Payment'}</Text>
+              <Text style={[s.txNote,  { color: th.tx4 }]}>{tx.note || t('debt_payment')}</Text>
               <Text style={[s.txDate,  { color: th.tx3 }]}>{fmtDate(tx.date)}</Text>
             </View>
             <Text style={[s.txAmount, { color: tx.amount >= 0 ? th.accTx : th.redTx }]}>
-              {tx.amount >= 0 ? '+' : ''}{fmt(tx.amount)}
+              {blur ?? `${tx.amount >= 0 ? '+' : ''}${fmt(tx.amount)}`}
             </Text>
           </View>
         ))}
       </View>
 
-      {/* Delete */}
       {!confirmDel ? (
         <Pressable
           onPress={() => setConfirmDel(true)}
           style={({ pressed }) => [s.deleteBtn, { backgroundColor: pressed ? th.redBg : th.redBg2 }]}
         >
-          <Text style={[s.deleteBtnText, { color: th.redTx }]}>Delete debt</Text>
+          <Text style={[s.deleteBtnText, { color: th.redTx }]}>{t('debt_delete')}</Text>
         </Pressable>
       ) : (
         <Pressable
           onPress={onDelete}
           style={({ pressed }) => [s.deleteBtn, { backgroundColor: pressed ? th.red + 'cc' : th.red }]}
         >
-          <Text style={[s.deleteBtnText, { color: '#fff' }]}>Confirm delete</Text>
+          <Text style={[s.deleteBtnText, { color: '#fff' }]}>{t('debt_confirm_delete')}</Text>
         </Pressable>
       )}
     </View>
@@ -236,6 +236,7 @@ function DebtForm({
   onSave: (data: Omit<Debt, 'id' | 'createdAt' | 'transactions'>) => void;
   onCancel: () => void;
 }) {
+  const { t } = useApp();
   const [name,   setName]   = useState('');
   const [amount, setAmount] = useState('');
   const [note,   setNote]   = useState('');
@@ -253,27 +254,23 @@ function DebtForm({
   return (
     <View>
       <Text style={[s.formHint, { color: th.tx2 }]}>
-        {isOwed
-          ? 'Record money someone owes you.'
-          : 'Record money you owe to someone.'}
+        {isOwed ? t('debt_form_owed') : t('debt_form_iowe')}
       </Text>
-      {(
-        [
-          { label: 'Person / organisation', value: name,   setter: setName,   placeholder: 'e.g. Ali Hassan', keyboard: 'default' },
-          { label: 'Amount',                value: amount, setter: setAmount, placeholder: '0.00',            keyboard: 'decimal-pad' },
-          { label: 'Note',                  value: note,   setter: setNote,   placeholder: 'e.g. Personal loan', keyboard: 'default' },
-          { label: 'People (comma-sep.)',   value: people, setter: setPeople, placeholder: 'e.g. Ali, Sara', keyboard: 'default' },
-        ] as const
-      ).map(f => (
-        <View key={f.label} style={{ marginBottom: 14 }}>
+      {[
+        { key: 'name',   label: t('debt_person_name'), value: name,   setter: setName,   placeholder: 'e.g. Ali Hassan',    keyboard: 'default' as const },
+        { key: 'amount', label: t('debt_amount'),       value: amount, setter: setAmount, placeholder: '0.00',               keyboard: 'decimal-pad' as const },
+        { key: 'note',   label: t('debt_note'),         value: note,   setter: setNote,   placeholder: 'e.g. Personal loan', keyboard: 'default' as const },
+        { key: 'people', label: t('debt_people'),       value: people, setter: setPeople, placeholder: 'e.g. Ali, Sara',    keyboard: 'default' as const },
+      ].map(f => (
+        <View key={f.key} style={{ marginBottom: 14 }}>
           <Text style={[s.inputLabel, { color: th.tx2 }]}>{f.label.toUpperCase()}</Text>
           <TextInput
             style={[s.input, { borderColor: th.bdr, backgroundColor: th.inp, color: th.tx }]}
             placeholder={f.placeholder}
             placeholderTextColor={th.tx3}
-            keyboardType={f.keyboard as any}
+            keyboardType={f.keyboard}
             value={f.value}
-            onChangeText={f.setter as (v: string) => void}
+            onChangeText={f.setter}
           />
         </View>
       ))}
@@ -282,13 +279,13 @@ function DebtForm({
           onPress={onCancel}
           style={({ pressed }) => [s.btn, { backgroundColor: pressed ? th.hov : 'transparent', borderColor: th.bdr, borderWidth: 1.5 }]}
         >
-          <Text style={[s.btnText, { color: th.tx2 }]}>Cancel</Text>
+          <Text style={[s.btnText, { color: th.tx2 }]}>{t('asset_cancel')}</Text>
         </Pressable>
         <Pressable
           onPress={handleSave}
           style={({ pressed }) => [s.btn, { backgroundColor: pressed ? (isOwed ? th.acc : th.red) + 'cc' : (isOwed ? th.acc : th.red) }]}
         >
-          <Text style={[s.btnText, { color: '#fff' }]}>Add debt</Text>
+          <Text style={[s.btnText, { color: '#fff' }]}>{t('debt_add_btn')}</Text>
         </Pressable>
       </View>
     </View>
@@ -297,7 +294,8 @@ function DebtForm({
 
 // ── Share sheet ───────────────────────────────────────────────────────────────
 function ShareSheet({ debt, th, onClose }: { debt: Debt; th: Theme; onClose: () => void }) {
-  const fmt = (n: number) => formatCurrency(n);
+  const { fmt, t, privacyMode } = useApp();
+  const blur = privacyMode ? '••••' : null;
   const msg = `${debt.name} – ${fmt(debt.amount)}${debt.note ? ` (${debt.note})` : ''}`;
 
   async function shareNative() {
@@ -312,14 +310,14 @@ function ShareSheet({ debt, th, onClose }: { debt: Debt; th: Theme; onClose: () 
       {/* Summary */}
       <View style={s.shareHero}>
         <Text style={[s.shareName,   { color: th.tx2 }]}>{debt.name}</Text>
-        <Text style={[s.shareAmount, { color: th.tx }]}>{fmt(debt.amount)}</Text>
+        <Text style={[s.shareAmount, { color: th.tx }]}>{blur ?? fmt(debt.amount)}</Text>
         {debt.note && <Text style={[s.shareNote, { color: th.tx3 }]}>{debt.note}</Text>}
       </View>
 
       {/* People */}
       {(debt.people?.length ?? 0) > 0 && (
         <View style={[s.sharePeople, { backgroundColor: th.bg }]}>
-          <Text style={[s.sharePeopleLabel, { color: th.tx2 }]}>PEOPLE</Text>
+          <Text style={[s.sharePeopleLabel, { color: th.tx2 }]}>{t('debt_people_label').toUpperCase()}</Text>
           <View style={s.sharePeopleRow}>
             {debt.people!.map((p, i) => (
               <View key={i} style={[s.shareTag, { backgroundColor: th.sur, borderColor: th.bdr }]}>
@@ -336,7 +334,7 @@ function ShareSheet({ debt, th, onClose }: { debt: Debt; th: Theme; onClose: () 
         style={({ pressed }) => [s.shareBtn, { backgroundColor: pressed ? th.acc + 'cc' : th.acc }]}
       >
         <Ionicons name="share-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-        <Text style={s.shareBtnText}>Share via…</Text>
+        <Text style={s.shareBtnText}>{t('debt_share_via')}</Text>
       </Pressable>
 
       {/* Preview */}
@@ -349,7 +347,8 @@ function ShareSheet({ debt, th, onClose }: { debt: Debt; th: Theme; onClose: () 
 
 // ── Main debts screen ─────────────────────────────────────────────────────────
 export default function DebtsScreen() {
-  const { th, fmt, t } = useApp();
+  const { th, fmt, t, privacyMode } = useApp();
+  const blur = privacyMode ? '••••' : null;
 
   const [debts, setDebts] = useState<Debt[]>([]);
   const [tab,   setTab]   = useState<'owed_to_me' | 'i_owe'>('owed_to_me');
@@ -410,9 +409,9 @@ export default function DebtsScreen() {
       {/* ── 3 summary chips ────────────────────────────────────── */}
       <View style={[s.summaryRow, { backgroundColor: th.sur, borderBottomColor: th.bdr }]}>
         {[
-          { label: t('dash_owed_to_me'), val: fmt(totOwed), bg: th.accBg, c: th.accTx },
-          { label: t('dash_i_owe'),     val: fmt(totIowe), bg: th.redBg, c: th.redTx },
-          { label: t('debt_net'),       val: fmt(net),     bg: th.bluBg, c: net >= 0 ? th.accTx : th.redTx },
+          { label: t('dash_owed_to_me'), val: blur ?? fmt(totOwed), bg: th.accBg, c: th.accTx },
+          { label: t('dash_i_owe'),     val: blur ?? fmt(totIowe), bg: th.redBg, c: th.redTx },
+          { label: t('debt_net'),       val: blur ?? fmt(net),     bg: th.bluBg, c: net >= 0 ? th.accTx : th.redTx },
         ].map(chip => (
           <View key={chip.label} style={[s.summaryChip, { backgroundColor: chip.bg }]}>
             <Text style={[s.summaryChipLabel, { color: chip.c }]}>{chip.label}</Text>
@@ -449,7 +448,7 @@ export default function DebtsScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={s.empty}>
-            <Text style={[s.emptyText, { color: th.tx3 }]}>No debts recorded here</Text>
+            <Text style={[s.emptyText, { color: th.tx3 }]}>{t('debt_no_debts')}</Text>
           </View>
         }
         renderItem={({ item: debt }) => (
@@ -465,7 +464,7 @@ export default function DebtsScreen() {
       />
 
       {/* ── Sheets ─────────────────────────────────────────────── */}
-      <BottomSheet visible={showAdd} onClose={() => setShowAdd(false)} title="Add debt">
+      <BottomSheet visible={showAdd} onClose={() => setShowAdd(false)} title={t('debt_add_title')}>
         <DebtForm
           direction={tab}
           th={th}
@@ -474,7 +473,7 @@ export default function DebtsScreen() {
         />
       </BottomSheet>
 
-      <BottomSheet visible={!!liveDetail} onClose={() => setDetailDebt(null)} title="Debt detail" tall>
+      <BottomSheet visible={!!liveDetail} onClose={() => setDetailDebt(null)} title={liveDetail?.name ?? ''} tall>
         {liveDetail && (
           <DebtDetail
             debt={liveDetail}
@@ -484,7 +483,7 @@ export default function DebtsScreen() {
         )}
       </BottomSheet>
 
-      <BottomSheet visible={!!shareDebt} onClose={() => setShareDebt(null)} title="Share debt">
+      <BottomSheet visible={!!shareDebt} onClose={() => setShareDebt(null)} title={t('debt_share_title')}>
         {shareDebt && (
           <ShareSheet debt={shareDebt} th={th} onClose={() => setShareDebt(null)} />
         )}
