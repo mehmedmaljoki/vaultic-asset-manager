@@ -1,15 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import {
   View, Text, ScrollView, Pressable, TextInput, Modal,
-  StyleSheet, useColorScheme, Linking, Share, Alert,
+  StyleSheet, Linking, Share, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LIGHT, DARK, type Theme } from '@/lib/colors';
-import {
-  getSettings, saveSettings, exportData, clearAllData,
-  type Settings,
-} from '@/lib/data';
+import { type Theme } from '@/lib/colors';
+import { exportData, clearAllData } from '@/lib/data';
+import { useApp } from '@/lib/AppContext';
+import { LANGS } from '@/lib/i18n';
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const CURRENCIES = [
@@ -163,14 +162,11 @@ function PickerModal({
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function SettingsScreen() {
-  const scheme = useColorScheme();
-  const th = scheme === 'dark' ? DARK : LIGHT;
+  const { th, t, settings, patchSettings } = useApp();
 
-  const [settings, setSettings] = useState<Settings>({
-    currency: 'EUR', themeMode: 'system', privacyMode: false, apiProvider: 'mock', apiKey: '',
-  });
   const [apiKeyVisible,  setApiKeyVisible]  = useState(false);
   const [showCurrPicker, setShowCurrPicker] = useState(false);
+  const [showLangPicker, setShowLangPicker] = useState(false);
   const [backupStatus,   setBackupStatus]   = useState<'idle'|'working'|'done'>('idle');
   const [confirmClear,   setConfirmClear]   = useState(false);
   const [creditsOpen,    setCreditsOpen]    = useState(false);
@@ -180,16 +176,8 @@ export default function SettingsScreen() {
   const [fbText,   setFbText]   = useState('');
   const [fbStatus, setFbStatus] = useState<'idle'|'done'>('idle');
 
-  const load = useCallback(async () => {
-    setSettings(await getSettings());
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  async function patch(key: keyof Settings, value: unknown) {
-    const next = { ...settings, [key]: value } as Settings;
-    setSettings(next);
-    await saveSettings({ [key]: value });
+  function patch<K extends keyof typeof settings>(key: K, value: typeof settings[K]) {
+    patchSettings({ [key]: value } as Partial<typeof settings>);
   }
 
   // ── Backup ────────────────────────────────────────────────────────────────
@@ -213,7 +201,7 @@ export default function SettingsScreen() {
       { text: 'Cancel', style: 'cancel', onPress: () => setConfirmClear(false) },
       {
         text: 'Delete everything', style: 'destructive',
-        onPress: async () => { await clearAllData(); setConfirmClear(false); await load(); },
+        onPress: async () => { await clearAllData(); setConfirmClear(false); },
       },
     ]);
   }
@@ -239,32 +227,43 @@ export default function SettingsScreen() {
 
         {/* ── Header ─────────────────────────────────────────────── */}
         <View style={[s.header, { backgroundColor: th.sur }]}>
-          <Text style={[s.headerTitle, { color: th.tx }]}>Settings</Text>
-          <Text style={[s.headerSub,   { color: th.tx2 }]}>Preferences & data</Text>
+          <Text style={[s.headerTitle, { color: th.tx }]}>{t('nav_settings')}</Text>
+          <Text style={[s.headerSub,   { color: th.tx2 }]}>{t('settings_subtitle')}</Text>
         </View>
 
         {/* ── Appearance ─────────────────────────────────────────── */}
-        <Section title="Appearance" th={th}>
-          <Row label="Theme" th={th}>
+        <Section title={t('settings_appearance')} th={th}>
+          <Row label={t('settings_theme')} th={th}>
             <Segment
               value={settings.themeMode}
               options={[
-                { value: 'light',  label: 'Light' },
-                { value: 'dark',   label: 'Dark' },
-                { value: 'system', label: 'Auto' },
+                { value: 'light',  label: t('settings_light') },
+                { value: 'dark',   label: t('settings_dark') },
+                { value: 'system', label: t('settings_system') },
               ]}
-              onChange={v => patch('themeMode', v)}
+              onChange={v => patch('themeMode', v as 'light'|'dark'|'system')}
               th={th}
             />
           </Row>
-          <Row label="Privacy Mode" sub="Blur all values on screen" last th={th}>
+          <Row label={t('settings_privacy')} sub={t('settings_privacy_sub')} last th={th}>
             <Toggle value={settings.privacyMode} onChange={v => patch('privacyMode', v)} th={th} />
           </Row>
         </Section>
 
-        {/* ── Currency ───────────────────────────────────────────── */}
-        <Section title="Currency" th={th}>
-          <Row label="Display currency" last th={th}>
+        {/* ── Language & Currency ─────────────────────────────────── */}
+        <Section title={t('settings_language')} th={th}>
+          <Row label={t('settings_language')} th={th}>
+            <Pressable
+              onPress={() => setShowLangPicker(true)}
+              style={({ pressed }) => [s.pickerTrigger, { backgroundColor: pressed ? th.hov : th.sur2, borderColor: th.bdr }]}
+            >
+              <Text style={[s.pickerTriggerText, { color: th.tx }]}>
+                {LANGS.find(l => l.code === (settings.language ?? 'en'))?.nativeName ?? 'English'}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color={th.tx3} />
+            </Pressable>
+          </Row>
+          <Row label={t('settings_currency')} last th={th}>
             <Pressable
               onPress={() => setShowCurrPicker(true)}
               style={({ pressed }) => [s.pickerTrigger, { backgroundColor: pressed ? th.hov : th.sur2, borderColor: th.bdr }]}
@@ -276,7 +275,7 @@ export default function SettingsScreen() {
         </Section>
 
         {/* ── Price data ─────────────────────────────────────────── */}
-        <Section title="Price Data" th={th}>
+        <Section title={t('settings_api')} th={th}>
           {API_PROVIDERS.map((p, i) => (
             <Row key={p.id} label={p.name} sub={p.desc} last={i === API_PROVIDERS.length - 1 && !needsKey} th={th}>
               <Radio checked={settings.apiProvider === p.id} onPress={() => patch('apiProvider', p.id)} th={th} />
@@ -291,7 +290,7 @@ export default function SettingsScreen() {
                   placeholder="Enter your API key…"
                   placeholderTextColor={th.tx3}
                   value={settings.apiKey}
-                  onChangeText={v => setSettings(p => ({ ...p, apiKey: v }))}
+                  onChangeText={v => patch('apiKey', v)}
                   onBlur={() => patch('apiKey', settings.apiKey)}
                   secureTextEntry={!apiKeyVisible}
                   autoCapitalize="none"
@@ -308,31 +307,25 @@ export default function SettingsScreen() {
         </Section>
 
         {/* ── Data management ────────────────────────────────────── */}
-        <Section title="Data Management" th={th}>
-          <Row label="Export backup" sub="Share JSON backup via system share sheet" th={th}>
+        <Section title={t('settings_data')} th={th}>
+          <Row label={t('settings_export')} sub={t('settings_export_sub')} th={th}>
             <SmallBtn
-              label={backupStatus === 'working' ? '…' : backupStatus === 'done' ? '✓ Done' : 'Export'}
+              label={backupStatus === 'working' ? '…' : backupStatus === 'done' ? '✓' : t('settings_export_btn')}
               bg={th.accBg}
               color={th.accTx}
               onPress={handleExport}
             />
           </Row>
-          <Row label="Import backup" sub="Paste JSON in the field below to restore" th={th}>
-            <SmallBtn label="Import" bg={th.bluBg} color={th.bluTx} onPress={() =>
-              Alert.alert('Import', 'Copy your backup JSON text and paste it when prompted.', [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Paste & Import', onPress: async () => {
-                    /* In a real build use expo-clipboard or expo-document-picker */
-                    Alert.alert('Coming soon', 'Full file picker import will be added in the next release.');
-                  }
-                },
+          <Row label={t('settings_import')} sub={t('settings_import_sub')} th={th}>
+            <SmallBtn label={t('settings_import_btn')} bg={th.bluBg} color={th.bluTx} onPress={() =>
+              Alert.alert(t('settings_import'), 'Full file picker import coming in next release.', [
+                { text: t('asset_cancel'), style: 'cancel' },
               ])
             } />
           </Row>
-          <Row label="Clear all data" sub="Permanently delete all assets, debts & history" last th={th}>
+          <Row label={t('settings_clear')} sub={t('settings_clear_sub')} last th={th}>
             <SmallBtn
-              label={confirmClear ? 'Confirm!' : 'Clear'}
+              label={confirmClear ? t('settings_clear_confirm') : t('settings_clear_btn')}
               bg={confirmClear ? th.red : th.redBg}
               color={confirmClear ? '#fff' : th.redTx}
               onPress={handleClear}
@@ -510,10 +503,21 @@ export default function SettingsScreen() {
       <PickerModal
         visible={showCurrPicker}
         onClose={() => setShowCurrPicker(false)}
-        title="Currency"
+        title={t('settings_currency')}
         options={CURRENCIES.map(c => ({ value: c.code, label: `${c.symbol}  ${c.code} — ${c.name}` }))}
         value={settings.currency}
         onChange={v => patch('currency', v)}
+        th={th}
+      />
+
+      {/* Language picker */}
+      <PickerModal
+        visible={showLangPicker}
+        onClose={() => setShowLangPicker(false)}
+        title={t('settings_language')}
+        options={LANGS.map(l => ({ value: l.code, label: `${l.dir === 'rtl' ? '⟵ ' : ''}${l.nativeName}` }))}
+        value={settings.language ?? 'en'}
+        onChange={v => patch('language', v)}
         th={th}
       />
     </SafeAreaView>

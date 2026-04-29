@@ -1,15 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, Modal, StyleSheet,
-  useColorScheme,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LIGHT, DARK, type Theme } from '@/lib/colors';
-import {
-  getAssets, calcValue, getTotalWorth, formatCurrency,
-  MOCK_PRICES, CATEGORIES,
-} from '@/lib/data';
+import { type Theme } from '@/lib/colors';
+import { getAssets, calcValue, getTotalWorth, MOCK_PRICES, CATEGORIES } from '@/lib/data';
+import { useApp } from '@/lib/AppContext';
 import type { Asset } from '@/lib/types';
 
 // ── Zakat rules per category ──────────────────────────────────────────────────
@@ -85,8 +82,7 @@ function InfoSheet({ visible, onClose, th }: { visible: boolean; onClose: () => 
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function ZakatScreen() {
-  const scheme = useColorScheme();
-  const th = scheme === 'dark' ? DARK : LIGHT;
+  const { th, fmt, t } = useApp();
 
   const [assets, setAssets] = useState<Asset[]>([]);
   const [nisabType, setNisabType] = useState<'silver' | 'gold'>('silver');
@@ -105,7 +101,6 @@ export default function ZakatScreen() {
     gold:   P.NISAB_GOLD_G   * P.gold,
   };
   const nisabEur = nisabValues[nisabType];
-  const fmt = (n: number) => formatCurrency(n);
 
   const grouped = CATEGORIES.map(cat => {
     const catAssets = assets.filter(a => a.type === cat.id);
@@ -142,7 +137,7 @@ export default function ZakatScreen() {
         <View style={[s.header, { backgroundColor: th.sur }]}>
           <View style={{ flex: 1 }}>
             <Text style={[s.headerTitle, { color: th.tx }]}>Zakat</Text>
-            <Text style={[s.headerSub,   { color: th.tx2 }]}>2.5% annual calculation</Text>
+            <Text style={[s.headerSub,   { color: th.tx2 }]}>{t('zakat_method')}</Text>
           </View>
           <Pressable
             onPress={() => setShowInfo(true)}
@@ -157,8 +152,8 @@ export default function ZakatScreen() {
           <Text style={[s.cardLabel, { color: th.tx2 }]}>NISAB STANDARD</Text>
           <View style={s.nisabRow}>
             {([
-              { id: 'silver', label: 'Silver', sub: `${P.NISAB_SILVER_G}g`, val: nisabValues.silver },
-              { id: 'gold',   label: 'Gold',   sub: `${P.NISAB_GOLD_G}g`,  val: nisabValues.gold   },
+              { id: 'silver', label: t('zakat_silver'), sub: `${P.NISAB_SILVER_G}g`, val: nisabValues.silver },
+              { id: 'gold',   label: t('zakat_gold'),   sub: `${P.NISAB_GOLD_G}g`,  val: nisabValues.gold   },
             ] as const).map(n => {
               const active = nisabType === n.id;
               return (

@@ -1,15 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, FlatList, Pressable, TextInput,
-  Modal, Animated, StyleSheet, useColorScheme, useWindowDimensions,
+  Modal, Animated, StyleSheet, useWindowDimensions,
   KeyboardAvoidingView, Platform, Share,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LIGHT, DARK, type Theme } from '@/lib/colors';
-import {
-  getDebts, addDebt, adjustDebt, deleteDebt, formatCurrency,
-} from '@/lib/data';
+import { type Theme } from '@/lib/colors';
+import { getDebts, addDebt, adjustDebt, deleteDebt, formatCurrency } from '@/lib/data';
+import { useApp } from '@/lib/AppContext';
 import type { Debt } from '@/lib/types';
 
 function fmtDate(iso: string) {
@@ -22,8 +21,7 @@ function BottomSheet({
 }: { visible: boolean; onClose: () => void; title: string; children: React.ReactNode; tall?: boolean }) {
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const scheme = useColorScheme();
-  const th = scheme === 'dark' ? DARK : LIGHT;
+  const { th } = useApp();
   const slideAnim = useState(() => new Animated.Value(0))[0];
 
   useEffect(() => {
@@ -351,8 +349,7 @@ function ShareSheet({ debt, th, onClose }: { debt: Debt; th: Theme; onClose: () 
 
 // ── Main debts screen ─────────────────────────────────────────────────────────
 export default function DebtsScreen() {
-  const scheme = useColorScheme();
-  const th = scheme === 'dark' ? DARK : LIGHT;
+  const { th, fmt, t } = useApp();
 
   const [debts, setDebts] = useState<Debt[]>([]);
   const [tab,   setTab]   = useState<'owed_to_me' | 'i_owe'>('owed_to_me');
@@ -360,8 +357,6 @@ export default function DebtsScreen() {
   const [showAdd,    setShowAdd]    = useState(false);
   const [detailDebt, setDetailDebt] = useState<Debt | null>(null);
   const [shareDebt,  setShareDebt]  = useState<Debt | null>(null);
-
-  const fmt = (n: number) => formatCurrency(n);
 
   const load = useCallback(async () => {
     setDebts(await getDebts());
@@ -401,8 +396,8 @@ export default function DebtsScreen() {
       {/* ── Header ─────────────────────────────────────────────── */}
       <View style={[s.header, { backgroundColor: th.sur }]}>
         <View style={{ flex: 1 }}>
-          <Text style={[s.headerTitle, { color: th.tx }]}>Debts</Text>
-          <Text style={[s.headerSub,   { color: th.tx2 }]}>Track money in and out</Text>
+          <Text style={[s.headerTitle, { color: th.tx }]}>{t('debt_title')}</Text>
+          <Text style={[s.headerSub,   { color: th.tx2 }]}>{t('debt_subtitle')}</Text>
         </View>
         <Pressable
           onPress={() => setShowAdd(true)}
@@ -415,9 +410,9 @@ export default function DebtsScreen() {
       {/* ── 3 summary chips ────────────────────────────────────── */}
       <View style={[s.summaryRow, { backgroundColor: th.sur, borderBottomColor: th.bdr }]}>
         {[
-          { label: 'Owed to me', val: fmt(totOwed), bg: th.accBg, c: th.accTx },
-          { label: 'I owe',      val: fmt(totIowe), bg: th.redBg, c: th.redTx },
-          { label: 'Net',        val: fmt(net),     bg: th.bluBg, c: net >= 0 ? th.accTx : th.redTx },
+          { label: t('dash_owed_to_me'), val: fmt(totOwed), bg: th.accBg, c: th.accTx },
+          { label: t('dash_i_owe'),     val: fmt(totIowe), bg: th.redBg, c: th.redTx },
+          { label: t('debt_net'),       val: fmt(net),     bg: th.bluBg, c: net >= 0 ? th.accTx : th.redTx },
         ].map(chip => (
           <View key={chip.label} style={[s.summaryChip, { backgroundColor: chip.bg }]}>
             <Text style={[s.summaryChipLabel, { color: chip.c }]}>{chip.label}</Text>
@@ -430,8 +425,8 @@ export default function DebtsScreen() {
       <View style={[s.tabWrap, { backgroundColor: th.sur, borderBottomColor: th.bdr }]}>
         <View style={[s.tabTrack, { backgroundColor: th.hov }]}>
           {([
-            { id: 'owed_to_me', label: `Owed to me (${owedToMe.length})` },
-            { id: 'i_owe',      label: `I owe (${iOwe.length})` },
+            { id: 'owed_to_me', label: `${t('dash_owed_to_me')} (${owedToMe.length})` },
+            { id: 'i_owe',      label: `${t('dash_i_owe')} (${iOwe.length})` },
           ] as const).map(tb => (
             <Pressable
               key={tb.id}

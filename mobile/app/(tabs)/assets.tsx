@@ -1,17 +1,18 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, FlatList, Pressable, TextInput,
-  Modal, Animated, StyleSheet, useColorScheme, useWindowDimensions,
+  Modal, Animated, StyleSheet, useWindowDimensions,
   TouchableOpacity, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import { LIGHT, DARK, type Theme } from '@/lib/colors';
+import { type Theme } from '@/lib/colors';
 import {
   getAssets, getHistory, addAsset, updateAsset, deleteAsset,
-  calcValue, getTotalWorth, formatCurrency, MOCK_PRICES, CATEGORIES,
+  calcValue, getTotalWorth, MOCK_PRICES, CATEGORIES,
 } from '@/lib/data';
+import { useApp } from '@/lib/AppContext';
 import type { Asset, HistoryPoint } from '@/lib/types';
 
 const METAL_TYPES  = ['gold','silver','platinum','palladium'];
@@ -27,8 +28,7 @@ function BottomSheet({
 }: { visible: boolean; onClose: () => void; title: string; children: React.ReactNode; tall?: boolean }) {
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const scheme = useColorScheme();
-  const th = scheme === 'dark' ? DARK : LIGHT;
+  const { th } = useApp();
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -393,8 +393,7 @@ function fmtDate(iso: string): string {
 
 // ── Assets screen ─────────────────────────────────────────────────────────────
 export default function AssetsScreen() {
-  const scheme = useColorScheme();
-  const th = scheme === 'dark' ? DARK : LIGHT;
+  const { th, fmt, t } = useApp();
 
   const [assets,  setAssets]  = useState<Asset[]>([]);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
@@ -404,8 +403,6 @@ export default function AssetsScreen() {
   const [editAsset,  setEditAsset]  = useState<Asset | null>(null);
   const [detailAsset,setDetailAsset]= useState<Asset | null>(null);
   const [showHistory,setShowHistory]= useState(false);
-
-  const fmt = (n: number) => formatCurrency(n);
 
   const load = useCallback(async () => {
     setAssets(await getAssets());
@@ -418,7 +415,7 @@ export default function AssetsScreen() {
   const filtered = filter === 'all' ? assets : assets.filter(a => a.type === filter);
 
   const filterTabs = [
-    { id: 'all', name: 'All', color: th.acc },
+    { id: 'all', name: t('asset_all'), color: th.acc },
     ...CATEGORIES,
   ];
 
@@ -444,9 +441,9 @@ export default function AssetsScreen() {
       {/* Header */}
       <View style={[s.header, { backgroundColor: th.sur, borderBottomColor: th.bdr }]}>
         <View style={{ flex: 1 }}>
-          <Text style={[s.headerTitle, { color: th.tx }]}>Assets</Text>
+          <Text style={[s.headerTitle, { color: th.tx }]}>{t('asset_title')}</Text>
           <Text style={[s.headerSub, { color: th.tx2 }]}>
-            {assets.length} items · {fmt(total)}
+            {assets.length} {t('dash_items')} · {fmt(total)}
           </Text>
         </View>
         <View style={s.headerBtns}>
@@ -454,13 +451,13 @@ export default function AssetsScreen() {
             onPress={() => setShowHistory(true)}
             style={({ pressed }) => [s.headerBtn, { backgroundColor: pressed ? th.hov : th.sur2, borderColor: th.bdr }]}
           >
-            <Text style={[s.headerBtnText, { color: th.tx2 }]}>History</Text>
+            <Text style={[s.headerBtnText, { color: th.tx2 }]}>{t('asset_history')}</Text>
           </Pressable>
           <Pressable
             onPress={() => setShowAdd(true)}
             style={({ pressed }) => [s.headerBtn, { backgroundColor: pressed ? th.acc + 'cc' : th.acc }]}
           >
-            <Text style={[s.headerBtnText, { color: '#fff' }]}>+ Add</Text>
+            <Text style={[s.headerBtnText, { color: '#fff' }]}>{t('asset_add')}</Text>
           </Pressable>
         </View>
       </View>

@@ -1,34 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  useColorScheme,
-  useWindowDimensions,
-  Pressable,
+  View, Text, ScrollView, StyleSheet, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, {
-  Path,
-  Circle,
-  Defs,
-  LinearGradient,
-  Stop,
-  Text as SvgText,
-} from 'react-native-svg';
-import { LIGHT, DARK, type Theme } from '@/lib/colors';
-import {
-  getAssets,
-  getHistory,
-  getDebts,
-  seedDemo,
-  calcValue,
-  getTotalWorth,
-  formatCurrency,
-  MOCK_PRICES,
-  CATEGORIES,
-} from '@/lib/data';
+import Svg, { Path, Circle, Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
+import { type Theme } from '@/lib/colors';
+import { getAssets, getHistory, getDebts, seedDemo, calcValue, getTotalWorth, MOCK_PRICES, CATEGORIES } from '@/lib/data';
+import { useApp } from '@/lib/AppContext';
 import type { Asset, HistoryPoint, Debt } from '@/lib/types';
 
 // ── Sparkline chart ───────────────────────────────────────────────────────────
@@ -133,8 +111,7 @@ function SummaryCard({
 
 // ── Main dashboard screen ─────────────────────────────────────────────────────
 export default function DashboardScreen() {
-  const scheme = useColorScheme();
-  const th = scheme === 'dark' ? DARK : LIGHT;
+  const { th, fmt, t, privacyMode } = useApp();
 
   const [assets, setAssets] = useState<Asset[]>([]);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
@@ -153,7 +130,7 @@ export default function DashboardScreen() {
   const totOwed  = debts.filter(d => d.direction === 'owed_to_me').reduce((s, d) => s + d.amount, 0);
   const totIowe  = debts.filter(d => d.direction === 'i_owe').reduce((s, d) => s + d.amount, 0);
   const netWorth = total + totOwed - totIowe;
-  const fmt      = (n: number) => formatCurrency(n);
+  const blur = privacyMode ? '••••' : null;
 
   // Category breakdown
   const byCategory = CATEGORIES
@@ -188,15 +165,15 @@ export default function DashboardScreen() {
       >
         {/* ── Header ────────────────────────────────────────────────── */}
         <View style={[styles.header, { backgroundColor: th.sur }]}>
-          <Text style={[styles.headerLabel, { color: th.tx2 }]}>NET WORTH</Text>
-          <Text style={[styles.netWorth, { color: th.tx }]}>{fmt(netWorth)}</Text>
+          <Text style={[styles.headerLabel, { color: th.tx2 }]}>{t('dash_net_worth').toUpperCase()}</Text>
+          <Text style={[styles.netWorth, { color: th.tx }]}>{blur ?? fmt(netWorth)}</Text>
           <View style={styles.changeRow}>
             <View style={[styles.changeBadge, { backgroundColor: changePos ? th.accBg : th.redBg }]}>
               <Text style={[styles.changeBadgeText, { color: changePos ? th.accTx : th.redTx }]}>
                 {changePos ? '▲' : '▼'} {Math.abs(parseFloat(change))}%
               </Text>
             </View>
-            <Text style={[styles.changeSub, { color: th.tx3 }]}>past 60 days</Text>
+            <Text style={[styles.changeSub, { color: th.tx3 }]}>{t('dash_past_days')}</Text>
           </View>
         </View>
 
@@ -209,15 +186,15 @@ export default function DashboardScreen() {
 
         {/* ── 4 Summary cards ───────────────────────────────────────── */}
         <View style={styles.cardsGrid}>
-          <SummaryCard label="Total Assets" value={fmt(total)}    sub={`${assets.length} items`} color={th.acc} th={th} />
-          <SummaryCard label="Net Worth"    value={fmt(netWorth)} sub="Assets − debts"           color={th.tx}  th={th} />
-          <SummaryCard label="Owed to me"   value={fmt(totOwed)}  sub="receivable"               color={th.blu} th={th} />
-          <SummaryCard label="I owe"        value={fmt(totIowe)}  sub="payable"                  color={th.red} th={th} />
+          <SummaryCard label={t('dash_assets_label')} value={blur ?? fmt(total)}    sub={`${assets.length} ${t('dash_items')}`} color={th.acc} th={th} />
+          <SummaryCard label={t('dash_net')}          value={blur ?? fmt(netWorth)} sub={t('dash_total_net')}                   color={th.tx}  th={th} />
+          <SummaryCard label={t('dash_owed_to_me')}   value={blur ?? fmt(totOwed)}  sub={t('dash_receivable')}                  color={th.blu} th={th} />
+          <SummaryCard label={t('dash_i_owe')}        value={blur ?? fmt(totIowe)}  sub={t('dash_payable')}                     color={th.red} th={th} />
         </View>
 
         {/* ── Portfolio breakdown ────────────────────────────────────── */}
         <View style={[styles.section, { backgroundColor: th.sur, ...th.shadow }]}>
-          <Text style={[styles.sectionTitle, { color: th.tx }]}>Portfolio Breakdown</Text>
+          <Text style={[styles.sectionTitle, { color: th.tx }]}>{t('dash_breakdown')}</Text>
           <View style={styles.breakdownRow}>
             {byCategory.length > 0 && (
               <PieChart data={byCategory} total={total} th={th} />
@@ -227,7 +204,7 @@ export default function DashboardScreen() {
                 <View key={cat.id} style={styles.barRow}>
                   <View style={styles.barLabelRow}>
                     <Text style={[styles.barLabel, { color: th.tx4 }]}>{cat.name}</Text>
-                    <Text style={[styles.barValue, { color: th.tx }]}>{fmt(cat.value)}</Text>
+                    <Text style={[styles.barValue, { color: th.tx }]}>{blur ?? fmt(cat.value)}</Text>
                   </View>
                   <View style={[styles.barTrack, { backgroundColor: th.hov }]}>
                     <View
@@ -245,7 +222,7 @@ export default function DashboardScreen() {
 
         {/* ── Live prices ────────────────────────────────────────────── */}
         <View style={[styles.section, { backgroundColor: th.sur, ...th.shadow }]}>
-          <Text style={[styles.pricesLabel, { color: th.tx2 }]}>LIVE PRICES</Text>
+          <Text style={[styles.pricesLabel, { color: th.tx2 }]}>{t('dash_live_prices').toUpperCase()}</Text>
           <View style={styles.pricesGrid}>
             {prices.map(p => (
               <View key={p.label} style={[styles.priceCell, { borderBottomColor: th.bdr }]}>

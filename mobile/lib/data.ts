@@ -185,6 +185,7 @@ export const SETTINGS_DEFAULTS = {
   privacyMode: false,
   apiProvider: 'mock',
   apiKey:      '',
+  language:    'en',
 };
 export type Settings = typeof SETTINGS_DEFAULTS;
 

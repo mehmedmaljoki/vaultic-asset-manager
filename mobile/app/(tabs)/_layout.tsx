@@ -1,21 +1,20 @@
 import { Tabs } from 'expo-router';
-import { useColorScheme, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LIGHT, DARK } from '@/lib/colors';
+import { useApp } from '@/lib/AppContext';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
-const TABS: { name: string; title: string; icon: IoniconName; iconActive: IoniconName }[] = [
-  { name: 'index',    title: 'Overview', icon: 'grid-outline',   iconActive: 'grid' },
-  { name: 'assets',   title: 'Assets',   icon: 'wallet-outline', iconActive: 'wallet' },
-  { name: 'zakat',    title: 'Zakat',    icon: 'moon-outline',   iconActive: 'moon' },
-  { name: 'debts',    title: 'Debts',    icon: 'people-outline', iconActive: 'people' },
-  { name: 'settings', title: 'Settings', icon: 'settings-outline',iconActive: 'settings' },
-];
-
 export default function TabLayout() {
-  const scheme = useColorScheme();
-  const th = scheme === 'dark' ? DARK : LIGHT;
+  const { th, t } = useApp();
+
+  const TABS: { name: string; titleKey: string; icon: IoniconName; iconActive: IoniconName }[] = [
+    { name: 'index',    titleKey: 'nav_overview', icon: 'grid-outline',    iconActive: 'grid' },
+    { name: 'assets',   titleKey: 'nav_assets',   icon: 'wallet-outline',  iconActive: 'wallet' },
+    { name: 'zakat',    titleKey: 'nav_zakat',    icon: 'moon-outline',    iconActive: 'moon' },
+    { name: 'debts',    titleKey: 'nav_debts',    icon: 'people-outline',  iconActive: 'people' },
+    { name: 'settings', titleKey: 'nav_settings', icon: 'settings-outline',iconActive: 'settings' },
+  ];
 
   return (
     <Tabs
@@ -29,7 +28,7 @@ export default function TabLayout() {
           paddingBottom: Platform.OS === 'ios' ? 24 : 8,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: th.acc,
+        tabBarActiveTintColor:   th.acc,
         tabBarInactiveTintColor: th.tx3,
         tabBarLabelStyle: {
           fontFamily: 'DMSans_700Bold',
@@ -43,13 +42,9 @@ export default function TabLayout() {
           key={tab.name}
           name={tab.name}
           options={{
-            title: tab.title,
+            title: t(tab.titleKey),
             tabBarIcon: ({ focused, color }) => (
-              <Ionicons
-                name={focused ? tab.iconActive : tab.icon}
-                size={22}
-                color={color}
-              />
+              <Ionicons name={focused ? tab.iconActive : tab.icon} size={22} color={color} />
             ),
           }}
         />
