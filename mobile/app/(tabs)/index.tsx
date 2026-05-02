@@ -15,7 +15,6 @@ import { useApp } from '@/lib/AppContext';
 import { useAssets } from '@/lib/hooks/useAssets';
 import { useDebts } from '@/lib/hooks/useDebts';
 import { calcValue } from '@/lib/services/AssetService';
-import { seedDemo } from '@/lib/services/SeedService';
 import { CATEGORIES } from '@/lib/models/Category';
 import type { Asset } from '@/lib/models/Asset';
 import type { HistoryPoint } from '@/lib/models/History';
@@ -425,7 +424,7 @@ function BreakdownSheet({
   byCategory: CatSlice[]; total: number; assets: Asset[];
   prices: Partial<LivePrices>;
 }) {
-  const { th, fmt } = useApp();
+  const { th, fmt, t, fxRates } = useApp();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -582,14 +581,14 @@ function BreakdownSheet({
                     </SvgText>
                     <SvgText x={cx} y={cy + 20} textAnchor="middle" fontSize={10}
                       fill={th.tx3} fontFamily="DMSans_400Regular">
-                      {(sel.value / total * 100).toFixed(1)}% of portfolio
+                      {(sel.value / total * 100).toFixed(1)}{t('breakdown_pct_of')}
                     </SvgText>
                   </>
                 ) : (
                   <>
                     <SvgText x={cx} y={cy - 8} textAnchor="middle" fontSize={11}
                       fill={th.tx2} fontFamily="DMSans_700Bold" fontWeight="600">
-                      PORTFOLIO
+                      {t('breakdown_portfolio')}
                     </SvgText>
                     <SvgText x={cx} y={cy + 10} textAnchor="middle" fontSize={13}
                       fill={th.tx} fontFamily="DMSans_700Bold" fontWeight="800">
@@ -599,7 +598,7 @@ function BreakdownSheet({
                 )}
               </Svg>
             </View>
-            <Text style={[s.bdHint, { color: th.tx3 }]}>Drag finger around the ring</Text>
+            <Text style={[s.bdHint, { color: th.tx3 }]}>{t('breakdown_drag_hint')}</Text>
           </View>
 
           {/* ── Category legend / asset list ─────────────────── */}
@@ -609,7 +608,7 @@ function BreakdownSheet({
               <>
                 <Text style={[s.bdSectionTitle, { color: th.tx }]}>{sel.name}</Text>
                 {sel.catAssets.map((asset, i) => {
-                  const val = calcValue(asset, prices) ?? 0;
+                  const val = calcValue(asset, prices, fxRates) ?? 0;
                   const assetPct = sel.value > 0 ? (val / sel.value * 100) : 0;
                   return (
                     <View key={asset.id} style={[s.bdAssetRow, {
@@ -643,7 +642,7 @@ function BreakdownSheet({
             ) : (
               /* Full category legend */
               <>
-                <Text style={[s.bdSectionTitle, { color: th.tx }]}>All categories</Text>
+                <Text style={[s.bdSectionTitle, { color: th.tx }]}>{t('cat_all_categories')}</Text>
                 {byCategory.map((cat, i) => (
                   <View key={cat.id} style={[s.bdLegendRow, {
                     borderBottomColor: th.bdr,
@@ -706,18 +705,15 @@ function SummaryCard({ label, value, sub, color, th }: {
 
 // ── Dashboard screen ──────────────────────────────────────────────────────────
 export default function DashboardScreen() {
-  const { th, fmt, t, privacyMode, prices, priceSource, priceAgeMinutes, refreshPrices } = useApp();
+  const { th, fmt, t, privacyMode, prices, priceSource, priceAgeMinutes, refreshPrices, fxRates } = useApp();
   const db = useSQLiteContext();
 
   const [showChart,     setShowChart]     = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [refreshing,    setRefreshing]    = useState(false);
 
-  const { assets, history, totalWorth, reload: reloadAssets } = useAssets(prices);
+  const { assets, history, totalWorth, reload: reloadAssets } = useAssets(prices, fxRates);
   const { debts, totOwed, totIowe }                           = useDebts();
-
-  // Seed demo data on first launch
-  useEffect(() => { seedDemo(db); }, [db]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -731,8 +727,9 @@ export default function DashboardScreen() {
   const byCategory = CATEGORIES
     .map(cat => ({
       ...cat,
+      name:      t(cat.nameKey),
       value:     assets.filter(a => a.type === cat.id)
-                       .reduce((s, a) => s + (calcValue(a, prices) ?? 0), 0),
+                       .reduce((s, a) => s + (calcValue(a, prices, fxRates) ?? 0), 0),
       count:     assets.filter(a => a.type === cat.id).length,
       catAssets: assets.filter(a => a.type === cat.id),
     }))

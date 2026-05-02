@@ -5,6 +5,10 @@ import type { Debt } from '../../../lib/models/Debt';
 
 jest.mock('expo-sqlite');
 jest.mock('../../../lib/services/DebtService');
+const mockNotify = jest.fn();
+jest.mock('../../../lib/AppContext', () => ({
+  useApp: () => ({ dataVersion: 0, notifyDataChanged: mockNotify }),
+}));
 
 const DebtService = require('../../../lib/services/DebtService');
 
@@ -57,7 +61,7 @@ describe('useDebts', () => {
     expect(DebtService.addDebt).toHaveBeenCalledWith(
       mockDb, { direction: 'owed_to_me', name: 'Sara', amount: 200, people: ['Sara'] }
     );
-    expect(DebtService.getDebts).toHaveBeenCalledTimes(2);
+    expect(mockNotify).toHaveBeenCalled();
   });
 
   it('handleAdjust calls adjustDebt then reloads', async () => {
@@ -70,7 +74,7 @@ describe('useDebts', () => {
     });
 
     expect(DebtService.adjustDebt).toHaveBeenCalledWith(mockDb, 'd1', -100, 'partial payment', 500);
-    expect(DebtService.getDebts).toHaveBeenCalledTimes(2);
+    expect(mockNotify).toHaveBeenCalled();
   });
 
   it('handleDelete calls deleteDebt then reloads', async () => {
@@ -83,7 +87,7 @@ describe('useDebts', () => {
     });
 
     expect(DebtService.deleteDebt).toHaveBeenCalledWith(mockDb, 'd1');
-    expect(DebtService.getDebts).toHaveBeenCalledTimes(2);
+    expect(mockNotify).toHaveBeenCalled();
   });
 
   it('handleSplit calls splitDebt then reloads', async () => {
@@ -97,6 +101,6 @@ describe('useDebts', () => {
     });
 
     expect(DebtService.splitDebt).toHaveBeenCalledWith(mockDb, debt);
-    expect(DebtService.getDebts).toHaveBeenCalledTimes(2);
+    expect(mockNotify).toHaveBeenCalled();
   });
 });

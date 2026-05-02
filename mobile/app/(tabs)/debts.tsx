@@ -109,7 +109,7 @@ function DebtCard({
         </View>
         <View style={s.cardRight}>
           <Text style={[s.cardAmount, { color: accent }]}>{blur ?? fmt(debt.amount)}</Text>
-          <Text style={[s.cardTx, { color: th.tx3 }]}>{debt.transactions?.length ?? 0} tx</Text>
+          <Text style={[s.cardTx, { color: th.tx3 }]}>{debt.transactions?.length ?? 0} {t('debt_tx_abbr')}</Text>
         </View>
       </View>
 
@@ -255,11 +255,14 @@ function DebtForm({
   const isOwed = direction === 'owed_to_me';
 
   function handleSave() {
-    if (!name.trim() || !amount) return;
+    const amt = parseFloat(amount);
+    if (!amt) return;                                       // amount stays required
+    const fallback = isOwed ? t('debt_unnamed_owed') : t('debt_unnamed_owe');
+    const finalName = name.trim() || fallback;
     const peopleList = people
       ? people.split(',').map(p => p.trim()).filter(Boolean)
-      : [name.trim()];
-    onSave({ direction, name: name.trim(), amount: parseFloat(amount), note: note.trim(), people: peopleList });
+      : [finalName];
+    onSave({ direction, name: finalName, amount: amt, note: note.trim(), people: peopleList });
   }
 
   return (
@@ -311,7 +314,7 @@ function ShareSheet({ debt, th, onClose }: { debt: Debt; th: Theme; onClose: () 
 
   async function shareNative() {
     try {
-      await Share.share({ message: msg, title: 'Debt Record' });
+      await Share.share({ message: msg, title: t('debt_share_record') });
     } catch {}
     onClose();
   }

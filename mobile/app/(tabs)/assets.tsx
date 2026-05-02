@@ -13,6 +13,8 @@ import { useApp } from '@/lib/AppContext';
 import { useAssets } from '@/lib/hooks/useAssets';
 import { calcValue } from '@/lib/services/AssetService';
 import { CATEGORIES } from '@/lib/models/Category';
+import { CURRENCIES } from '@/lib/models/Currency';
+import { formatCurrency } from '@/lib/utils/currency';
 import type { Asset } from '@/lib/models/Asset';
 import type { HistoryPoint } from '@/lib/models/History';
 
@@ -21,6 +23,37 @@ const CRYPTO_TYPES = ['bitcoin','ethereum','solana','bnb'];
 const UNITS: Record<string,Record<string,string>> = {
   metals:{ gold:'g', silver:'g', platinum:'g', palladium:'g' },
   crypto:{ bitcoin:'BTC', ethereum:'ETH', solana:'SOL', bnb:'BNB' },
+};
+
+// Millesimal fineness presets per metal. 1000 = pure.
+const PURITY_OPTIONS: Record<string, { value: number; label: string }[]> = {
+  gold: [
+    { value: 999.9, label: '999.9 (24k)' },
+    { value: 999,   label: '999 (24k)' },
+    { value: 916,   label: '916 (22k)' },
+    { value: 875,   label: '875 (21k)' },
+    { value: 750,   label: '750 (18k)' },
+    { value: 585,   label: '585 (14k)' },
+    { value: 417,   label: '417 (10k)' },
+    { value: 375,   label: '375 (9k)' },
+  ],
+  silver: [
+    { value: 999, label: '999 (Fine)' },
+    { value: 925, label: '925 (Sterling)' },
+    { value: 900, label: '900 (Coin)' },
+    { value: 800, label: '800' },
+  ],
+  platinum: [
+    { value: 999, label: '999' },
+    { value: 950, label: '950' },
+    { value: 900, label: '900' },
+    { value: 850, label: '850' },
+  ],
+  palladium: [
+    { value: 999, label: '999' },
+    { value: 950, label: '950' },
+    { value: 500, label: '500' },
+  ],
 };
 
 // ── Bottom sheet ──────────────────────────────────────────────────────────────
@@ -164,17 +197,27 @@ function ActionBtn({ label, variant = 'primary', onPress, th }: {
 function AssetDetail({ asset, onEdit, onDelete }: {
   asset: Asset; onEdit: (a: Asset) => void; onDelete: (id: string) => void;
 }) {
-  const { th, fmt, t, privacyMode, prices } = useApp();
+  const { th, fmt, t, privacyMode, prices, fxRates, settings } = useApp();
   const blur = privacyMode ? '••••' : null;
   const cat = CATEGORIES.find(c => c.id === asset.type) ?? CATEGORIES[0];
-  const val = calcValue(asset, prices) ?? 0;
+  const val = calcValue(asset, prices, fxRates) ?? 0;
   const [confirmDel, setConfirmDel] = useState(false);
+
+  const enteredValueLabel = asset.value != null
+    ? (asset.currency && asset.currency !== settings.currency
+        ? formatCurrency(asset.value, asset.currency)
+        : fmt(asset.value))
+    : null;
 
   const rows = [
     { label: t('asset_name'),           value: asset.name },
     asset.quantity != null ? { label: t('asset_quantity'), value: `${asset.quantity} ${asset.unit ?? ''}` } : null,
     asset.subtype          ? { label: t('asset_type'),     value: asset.subtype.charAt(0).toUpperCase() + asset.subtype.slice(1) } : null,
-    asset.value != null    ? { label: t('asset_entered_value'), value: blur ?? fmt(asset.value) } : null,
+    asset.type === 'metals' && asset.purity != null
+      ? { label: t('asset_purity'),     value: String(asset.purity) } : null,
+    enteredValueLabel != null ? { label: t('asset_entered_value'), value: blur ?? enteredValueLabel } : null,
+    asset.currency && asset.currency !== settings.currency
+      ? { label: t('asset_currency'),    value: asset.currency } : null,
     { label: t('asset_added'),           value: fmtDate(asset.purchasedAt ?? asset.createdAt) },
     asset.updatedAt        ? { label: t('asset_updated'), value: fmtDate(asset.updatedAt) } : null,
   ].filter(Boolean) as { label: string; value: string }[];
@@ -186,7 +229,7 @@ function AssetDetail({ asset, onEdit, onDelete }: {
           <Text style={{ fontSize: 26 }}>{iconFor(asset.type)}</Text>
         </View>
         <Text style={[s.detailValue, { color: th.tx }]}>{blur ?? fmt(val)}</Text>
-        <Text style={[s.detailCat, { color: th.tx2 }]}>{cat.name}</Text>
+        <Text style={[s.detailCat, { color: th.tx2 }]}>{t(cat.nameKey)}</Text>
       </View>
       {rows.map(row => (
         <View key={row.label} style={[s.detailRow, { borderBottomColor: th.bdr }]}>
@@ -210,12 +253,14 @@ function AssetForm({ initial, onSave, onCancel }: {
   onSave: (data: Omit<Asset, 'id' | 'createdAt'>) => void;
   onCancel: () => void;
 }) {
-  const { th, fmt, t } = useApp();
+  const { th, fmt, t, settings } = useApp();
   const [type,       setType]       = useState<Asset['type']>(initial?.type ?? 'money');
   const [name,       setName]       = useState(initial?.name ?? '');
   const [value,      setValue]      = useState(String(initial?.value ?? ''));
   const [quantity,   setQuantity]   = useState(String(initial?.quantity ?? ''));
   const [subtype,    setSubtype]    = useState(initial?.subtype ?? 'gold');
+  const [purity,     setPurity]     = useState<number>(initial?.purity ?? 999);
+  const [currency,   setCurrency]   = useState(initial?.currency ?? settings.currency);
   // Date: default to purchasedAt → createdAt → today
   const [date,       setDate]       = useState<Date>(
     initial?.purchasedAt ? new Date(initial.purchasedAt)
@@ -224,29 +269,52 @@ function AssetForm({ initial, onSave, onCancel }: {
   );
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [showSubPicker, setShowSubPicker] = useState(false);
+  const [showPurityPicker, setShowPurityPicker] = useState(false);
+  const [showCurrPicker, setShowCurrPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const needsSub   = type === 'metals' || type === 'crypto';
+  const isMetals   = type === 'metals';
   const subtypeOpts = type === 'metals' ? METAL_TYPES : CRYPTO_TYPES;
   const unit       = needsSub ? (UNITS[type]?.[subtype] ?? '') : '';
+  const purityOpts = isMetals ? (PURITY_OPTIONS[subtype] ?? []) : [];
+  const purityLabel = purityOpts.find(p => p.value === purity)?.label ?? String(purity);
   const { prices } = useApp();
   const livePrice  = needsSub ? ((prices as Record<string,number|null|undefined>)[subtype] ?? null) : null;
-  const liveVal    = livePrice && quantity ? (parseFloat(quantity) * livePrice) : null;
+  const purityMul  = isMetals ? (purity / 1000) : 1;
+  const liveVal    = livePrice && quantity ? (parseFloat(quantity) * livePrice * purityMul) : null;
 
-  const catOptions = CATEGORIES.map(c => ({ value: c.id, label: c.name }));
+  const catOptions = CATEGORIES.map(c => ({ value: c.id, label: t(c.nameKey) }));
   const subOptions = subtypeOpts.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }));
-  const selectedCat = CATEGORIES.find(c => c.id === type)?.name ?? '';
+  const currOptions = CURRENCIES.map(c => ({ value: c.code, label: `${c.symbol}  ${c.code} — ${c.name}` }));
+  const selectedCat = (() => {
+    const c = CATEGORIES.find(x => x.id === type);
+    return c ? t(c.nameKey) : '';
+  })();
   const selectedSub = subtype.charAt(0).toUpperCase() + subtype.slice(1);
+  const selectedCurr = (() => {
+    const c = CURRENCIES.find(x => x.code === currency);
+    return c ? `${c.symbol}  ${c.code}` : currency;
+  })();
 
   const dateLabel = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   const isToday   = date.toDateString() === new Date().toDateString();
 
   function handleSave() {
-    if (!name.trim()) return;
+    const cat          = CATEGORIES.find(c => c.id === type);
+    const fallbackName = cat ? t(cat.nameKey) : type;
+    const finalName    = name.trim() || fallbackName;
     const data: Omit<Asset, 'id' | 'createdAt'> = {
-      type, name: name.trim(),
+      type, name: finalName,
       purchasedAt: date.toISOString(),
-      ...(needsSub ? { subtype, quantity: parseFloat(quantity) || 0, unit } : { value: parseFloat(value) || 0 }),
+      ...(needsSub
+        ? {
+            subtype,
+            quantity: parseFloat(quantity) || 0,
+            unit,
+            ...(isMetals ? { purity } : {}),
+          }
+        : { value: parseFloat(value) || 0, currency }),
     };
     onSave(data);
   }
@@ -262,7 +330,13 @@ function AssetForm({ initial, onSave, onCancel }: {
           th={th}
         />
       )}
-      <AppInput label={t('asset_name')} value={name} onChangeText={setName} placeholder="e.g. Gold Bars" th={th} />
+      <AppInput
+        label={t('asset_name_optional')}
+        value={name}
+        onChangeText={setName}
+        placeholder={t('asset_name_placeholder')}
+        th={th}
+      />
       {needsSub ? (
         <View>
           <AppInput
@@ -270,6 +344,14 @@ function AssetForm({ initial, onSave, onCancel }: {
             value={quantity} onChangeText={setQuantity}
             placeholder="0" keyboardType="decimal-pad" th={th}
           />
+          {isMetals && (
+            <SelectRow
+              label={t('asset_purity')}
+              value={purityLabel}
+              onPress={() => setShowPurityPicker(true)}
+              th={th}
+            />
+          )}
           {liveVal != null && (
             <Text style={[s.liveHint, { color: th.acc }]}>
               ≈ {fmt(liveVal)} {t('asset_at_price')} {fmt(livePrice!)} / {unit}
@@ -277,12 +359,24 @@ function AssetForm({ initial, onSave, onCancel }: {
           )}
         </View>
       ) : (
-        <AppInput label={t('asset_value')} value={value} onChangeText={setValue} placeholder="0.00" keyboardType="decimal-pad" th={th} />
+        <View>
+          <AppInput
+            label={`${t('asset_value')} (${currency})`}
+            value={value} onChangeText={setValue}
+            placeholder="0.00" keyboardType="decimal-pad" th={th}
+          />
+          <SelectRow
+            label={t('asset_currency')}
+            value={selectedCurr}
+            onPress={() => setShowCurrPicker(true)}
+            th={th}
+          />
+        </View>
       )}
 
       {/* ── Date field ─────────────────────────────────────── */}
       <View style={{ marginBottom: 14 }}>
-        <Text style={[s.inputLabel, { color: th.tx2 }]}>DATUM / DATE</Text>
+        <Text style={[s.inputLabel, { color: th.tx2 }]}>{t('asset_date').toUpperCase()}</Text>
         <Pressable
           onPress={() => setShowDatePicker(p => !p)}
           style={({ pressed }) => [
@@ -296,7 +390,7 @@ function AssetForm({ initial, onSave, onCancel }: {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             {!isToday && (
               <View style={[s.pastBadge, { backgroundColor: th.accBg }]}>
-                <Text style={[s.pastBadgeText, { color: th.accTx }]}>Past</Text>
+                <Text style={[s.pastBadgeText, { color: th.accTx }]}>{t('asset_past_badge')}</Text>
               </View>
             )}
             <Ionicons name="calendar-outline" size={16} color={showDatePicker ? th.acc : th.tx3} />
@@ -344,7 +438,24 @@ function AssetForm({ initial, onSave, onCancel }: {
       <PickerSheet
         visible={showSubPicker} onClose={() => setShowSubPicker(false)}
         title={type === 'metals' ? t('asset_metal_type') : t('asset_coin')}
-        options={subOptions} value={subtype} onChange={setSubtype} th={th}
+        options={subOptions} value={subtype} onChange={(v) => {
+          setSubtype(v);
+          // Reset purity to a sensible default when switching metal type.
+          if (isMetals) setPurity(PURITY_OPTIONS[v]?.[0]?.value ?? 999);
+        }} th={th}
+      />
+      <PickerSheet
+        visible={showPurityPicker} onClose={() => setShowPurityPicker(false)}
+        title={t('asset_purity')}
+        options={purityOpts.map(o => ({ value: String(o.value), label: o.label }))}
+        value={String(purity)}
+        onChange={(v) => setPurity(parseFloat(v))}
+        th={th}
+      />
+      <PickerSheet
+        visible={showCurrPicker} onClose={() => setShowCurrPicker(false)}
+        title={t('asset_currency')}
+        options={currOptions} value={currency} onChange={setCurrency} th={th}
       />
     </View>
   );
@@ -425,10 +536,10 @@ function fmtDate(iso: string): string {
 
 // ── Assets screen ─────────────────────────────────────────────────────────────
 export default function AssetsScreen() {
-  const { th, fmt, t, privacyMode, prices } = useApp();
+  const { th, fmt, t, privacyMode, prices, fxRates, settings } = useApp();
   const blur = privacyMode ? '••••' : null;
 
-  const { assets, history, totalWorth, handleAdd, handleUpdate, handleDelete } = useAssets(prices);
+  const { assets, history, totalWorth, handleAdd, handleUpdate, handleDelete } = useAssets(prices, fxRates);
 
   const [filter,  setFilter]  = useState('all');
   const [showAdd,    setShowAdd]    = useState(false);
@@ -440,7 +551,7 @@ export default function AssetsScreen() {
 
   const filterTabs = [
     { id: 'all', name: t('asset_all'), color: th.acc },
-    ...CATEGORIES,
+    ...CATEGORIES.map(c => ({ ...c, name: t(c.nameKey) })),
   ];
 
   async function handleSaveAsset(data: Omit<Asset, 'id' | 'createdAt'>) {
@@ -518,8 +629,9 @@ export default function AssetsScreen() {
         }
         renderItem={({ item: asset }) => {
           const cat = CATEGORIES.find(c => c.id === asset.type) ?? CATEGORIES[0];
-          const val = calcValue(asset, prices);
+          const val = calcValue(asset, prices, fxRates);
           const pct = val != null && totalWorth > 0 ? (val / totalWorth * 100).toFixed(1) : null;
+          const showOriginal = asset.value != null && asset.currency && asset.currency !== settings.currency;
           return (
             <Pressable
               onPress={() => setDetailAsset(asset)}
@@ -534,12 +646,15 @@ export default function AssetsScreen() {
               <View style={s.assetMid}>
                 <Text style={[s.assetName, { color: th.tx }]} numberOfLines={1}>{asset.name}</Text>
                 <Text style={[s.assetSub, { color: th.tx3 }]}>
-                  {cat.name}{asset.quantity != null ? ` · ${asset.quantity} ${asset.unit ?? ''}` : ''}
+                  {t(cat.nameKey)}{asset.quantity != null ? ` · ${asset.quantity} ${asset.unit ?? ''}` : ''}
                 </Text>
               </View>
               <View style={s.assetRight}>
                 <Text style={[s.assetVal, { color: th.tx }]}>{blur ?? (val != null ? fmt(val) : '–')}</Text>
-                <Text style={[s.assetPct, { color: th.tx3 }]}>{privacyMode ? '–' : pct != null ? `${pct}%` : '–'}</Text>
+                {showOriginal
+                  ? <Text style={[s.assetPct, { color: th.tx3 }]}>{blur ?? formatCurrency(asset.value!, asset.currency!)}</Text>
+                  : <Text style={[s.assetPct, { color: th.tx3 }]}>{privacyMode ? '–' : pct != null ? `${pct}%` : '–'}</Text>
+                }
               </View>
             </Pressable>
           );

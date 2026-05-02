@@ -9,37 +9,15 @@ import { type Theme } from '@/lib/colors';
 import { useApp } from '@/lib/AppContext';
 import { LANGS } from '@/lib/i18n';
 import { useBackup } from '@/lib/hooks/useBackup';
+import { CURRENCIES } from '@/lib/models/Currency';
 
 // ── Data ──────────────────────────────────────────────────────────────────────
-const CURRENCIES = [
-  { code: 'EUR', symbol: '€',   name: 'Euro' },
-  { code: 'USD', symbol: '$',   name: 'US Dollar' },
-  { code: 'GBP', symbol: '£',   name: 'British Pound' },
-  { code: 'CHF', symbol: '₣',   name: 'Swiss Franc' },
-  { code: 'TRY', symbol: '₺',   name: 'Turkish Lira' },
-  { code: 'SAR', symbol: '﷼',   name: 'Saudi Riyal' },
-  { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham' },
-  { code: 'PKR', symbol: '₨',   name: 'Pakistani Rupee' },
-  { code: 'INR', symbol: '₹',   name: 'Indian Rupee' },
-  { code: 'CNY', symbol: '¥',   name: 'Chinese Yuan' },
-  { code: 'RUB', symbol: '₽',   name: 'Russian Ruble' },
-  { code: 'IDR', symbol: 'Rp',  name: 'Indonesian Rupiah' },
-  { code: 'MYR', symbol: 'RM',  name: 'Malaysian Ringgit' },
-  { code: 'BHD', symbol: 'BD',  name: 'Bahraini Dinar' },
-  { code: 'KWD', symbol: 'KD',  name: 'Kuwaiti Dinar' },
-];
-
-const API_PROVIDERS = [
-  { id: 'goldapi', name: 'GoldAPI.io',      desc: 'Real-time metals (XAU/XAG/XPT/XPD). No key needed.' },
-  { id: 'mock',    name: 'Mock / Offline',  desc: 'No internet needed. Demo prices for testing.' },
-];
-
 const TECH_STACK = [
-  { name: 'React Native',     role: 'UI framework' },
-  { name: 'Expo SDK 54',      role: 'Build & native APIs' },
-  { name: 'SQLite (expo-sqlite)', role: 'Private offline storage' },
-  { name: 'react-native-svg', role: 'Charts' },
-  { name: 'Expo Router',      role: 'Navigation' },
+  { name: 'React Native',         roleKey: 'tech_role_ui' },
+  { name: 'Expo SDK 54',          roleKey: 'tech_role_build' },
+  { name: 'SQLite (expo-sqlite)', roleKey: 'tech_role_storage' },
+  { name: 'react-native-svg',     roleKey: 'tech_role_charts' },
+  { name: 'Expo Router',          roleKey: 'tech_role_nav' },
 ];
 
 // Feedback categories — labels resolved at render time via t()
@@ -80,17 +58,6 @@ function Toggle({ value, onChange, th }: { value: boolean; onChange: (v: boolean
   return (
     <Pressable onPress={() => onChange(!value)} style={[s.toggle, { backgroundColor: value ? th.acc : th.bdr2 }]}>
       <View style={[s.toggleThumb, { left: value ? 22 : 3 }]} />
-    </Pressable>
-  );
-}
-
-function Radio({ checked, onPress, th }: { checked: boolean; onPress: () => void; th: Theme }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[s.radio, { borderColor: checked ? th.acc : th.bdr2, backgroundColor: checked ? th.acc : 'transparent' }]}
-    >
-      {checked && <View style={s.radioDot} />}
     </Pressable>
   );
 }
@@ -161,10 +128,9 @@ function PickerModal({
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function SettingsScreen() {
-  const { th, t, settings, patchSettings } = useApp();
-  const { status: backupStatus, handleExport, handleImport, handleClear: clearAll } = useBackup();
+  const { th, t, settings, patchSettings, notifyDataChanged } = useApp();
+  const { status: backupStatus, handleExport, handleImport, handleClear: clearAll } = useBackup(notifyDataChanged);
 
-  const [apiKeyVisible,  setApiKeyVisible]  = useState(false);
   const [showCurrPicker, setShowCurrPicker] = useState(false);
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [confirmClear,   setConfirmClear]   = useState(false);
@@ -182,13 +148,16 @@ export default function SettingsScreen() {
   // ── Clear ─────────────────────────────────────────────────────────────────
   function handleClear() {
     if (!confirmClear) { setConfirmClear(true); return; }
-    Alert.alert('Clear all data', 'This will permanently delete all assets, debts, and history. This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel', onPress: () => setConfirmClear(false) },
-      {
-        text: 'Delete everything', style: 'destructive',
-        onPress: async () => { await clearAll(); setConfirmClear(false); },
-      },
-    ]);
+    Alert.alert(
+      t('settings_clear_alert_title'),
+      t('settings_clear_alert_msg'),
+      [
+        { text: t('settings_clear_alert_cancel'), style: 'cancel',
+          onPress: () => setConfirmClear(false) },
+        { text: t('settings_clear_alert_delete'), style: 'destructive',
+          onPress: async () => { await clearAll(); setConfirmClear(false); } },
+      ]
+    );
   }
 
   // ── Feedback ──────────────────────────────────────────────────────────────
@@ -203,8 +172,6 @@ export default function SettingsScreen() {
   const currLabel = CURRENCIES.find(c => c.code === settings.currency)
     ? `${CURRENCIES.find(c => c.code === settings.currency)!.symbol} ${settings.currency}`
     : settings.currency;
-
-  const needsKey = false; // Neither goldapi nor mock requires a key currently
 
   return (
     <SafeAreaView style={[s.root, { backgroundColor: th.bg }]} edges={['top']}>
@@ -259,38 +226,6 @@ export default function SettingsScreen() {
           </Row>
         </Section>
 
-        {/* ── Price data ─────────────────────────────────────────── */}
-        <Section title={t('settings_api')} th={th}>
-          {API_PROVIDERS.map((p, i) => (
-            <Row key={p.id} label={p.name} sub={p.desc} last={i === API_PROVIDERS.length - 1 && !needsKey} th={th}>
-              <Radio checked={settings.apiProvider === p.id} onPress={() => patch('apiProvider', p.id as 'goldapi' | 'mock')} th={th} />
-            </Row>
-          ))}
-          {needsKey && (
-            <View style={[s.apiKeyRow, { borderTopColor: th.bdr }]}>
-              <Text style={[s.inputLabel, { color: th.tx2 }]}>API KEY</Text>
-              <View style={s.apiKeyInputWrap}>
-                <TextInput
-                  style={[s.apiKeyInput, { borderColor: th.bdr, backgroundColor: th.inp, color: th.tx }]}
-                  placeholder="Enter your API key…"
-                  placeholderTextColor={th.tx3}
-                  value={settings.apiKey}
-                  onChangeText={v => patch('apiKey', v)}
-                  onBlur={() => patch('apiKey', settings.apiKey)}
-                  secureTextEntry={!apiKeyVisible}
-                  autoCapitalize="none"
-                />
-                <Pressable
-                  onPress={() => setApiKeyVisible(p => !p)}
-                  style={[s.eyeBtn, { backgroundColor: th.hov }]}
-                >
-                  <Ionicons name={apiKeyVisible ? 'eye-off-outline' : 'eye-outline'} size={18} color={th.tx2} />
-                </Pressable>
-              </View>
-            </View>
-          )}
-        </Section>
-
         {/* ── Data management ────────────────────────────────────── */}
         <Section title={t('settings_data')} th={th}>
           <Row label={t('settings_export')} sub={t('settings_export_sub')} th={th}>
@@ -327,29 +262,29 @@ export default function SettingsScreen() {
               <Ionicons name="wallet-outline" size={26} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[s.appName,    { color: th.tx }]}>Offline Asset Manager</Text>
-              <Text style={[s.appVersion, { color: th.tx2 }]}>Version 1.2 · 2026</Text>
-              <Text style={[s.appTagline, { color: th.tx3 }]}>Works offline · No tracking</Text>
+              <Text style={[s.appName,    { color: th.tx }]}>{t('app_name')}</Text>
+              <Text style={[s.appVersion, { color: th.tx2 }]}>{t('app_version_word')} 1.2 · 2026</Text>
+              <Text style={[s.appTagline, { color: th.tx3 }]}>{t('app_tagline')}</Text>
             </View>
           </View>
 
           {/* Description */}
           <View style={[s.aboutDesc, { borderBottomColor: th.bdr }]}>
             <Text style={[s.aboutDescText, { color: th.tx2 }]}>
-              A fully offline personal finance app — track assets, calculate Zakat (Hanafi), manage debts, all stored privately on your device. No account, no server.
+              {t('app_description')}
             </Text>
           </View>
 
           {/* Stats */}
           <View style={[s.statsRow, { borderBottomColor: th.bdr }]}>
             {[
-              { label: 'Currencies', val: '15' },
-              { label: 'Asset Types', val: '7' },
-              { label: '100% Private', val: '🔒' },
+              { labelKey: 'app_stat_currencies', val: '15' },
+              { labelKey: 'app_stat_types',      val: '7'  },
+              { labelKey: 'app_stat_private',    val: '🔒' },
             ].map((stat, i) => (
-              <View key={stat.label} style={[s.statCell, i < 2 && { borderRightColor: th.bdr, borderRightWidth: 0.5 }]}>
+              <View key={stat.labelKey} style={[s.statCell, i < 2 && { borderRightColor: th.bdr, borderRightWidth: 0.5 }]}>
                 <Text style={[s.statVal, { color: th.acc }]}>{stat.val}</Text>
-                <Text style={[s.statLabel, { color: th.tx3 }]}>{stat.label}</Text>
+                <Text style={[s.statLabel, { color: th.tx3 }]}>{t(stat.labelKey)}</Text>
               </View>
             ))}
           </View>
@@ -359,7 +294,7 @@ export default function SettingsScreen() {
             onPress={() => setCreditsOpen(p => !p)}
             style={[s.creditsToggle, { borderTopColor: th.bdr }]}
           >
-            <Text style={[s.creditsToggleText, { color: th.tx2 }]}>Built with</Text>
+            <Text style={[s.creditsToggleText, { color: th.tx2 }]}>{t('app_credits_title')}</Text>
             <Ionicons
               name={creditsOpen ? 'chevron-up' : 'chevron-down'}
               size={14} color={th.tx3}
@@ -370,7 +305,7 @@ export default function SettingsScreen() {
               {TECH_STACK.map(item => (
                 <View key={item.name} style={s.creditRow}>
                   <Text style={[s.creditName, { color: th.tx }]}>{item.name}</Text>
-                  <Text style={[s.creditRole, { color: th.tx3 }]}>{item.role}</Text>
+                  <Text style={[s.creditRole, { color: th.tx3 }]}>{t(item.roleKey)}</Text>
                 </View>
               ))}
             </View>
@@ -450,8 +385,8 @@ export default function SettingsScreen() {
 
         {/* ── Footer ─────────────────────────────────────────────── */}
         <View style={s.footer}>
-          <Text style={[s.footerText, { color: th.tx3 }]}>Offline Asset Manager · v1.2</Text>
-          <Text style={[s.footerSub,  { color: th.tx3 }]}>All data on your device · No tracking · No ads</Text>
+          <Text style={[s.footerText, { color: th.tx3 }]}>{t('app_name')} · v1.2</Text>
+          <Text style={[s.footerSub,  { color: th.tx3 }]}>{t('app_footer_tagline')}</Text>
         </View>
 
       </ScrollView>
@@ -503,10 +438,6 @@ const s = StyleSheet.create({
   toggle:      { width: 44, height: 26, borderRadius: 13 },
   toggleThumb: { position: 'absolute', width: 20, height: 20, top: 3, borderRadius: 10, backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.25, shadowRadius: 2, elevation: 2 },
 
-  // Radio
-  radio:    { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  radioDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
-
   // Segment
   segTrack:       { flexDirection: 'row', borderRadius: 10, padding: 2 },
   segBtn:         { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
@@ -520,13 +451,6 @@ const s = StyleSheet.create({
   // Currency trigger
   pickerTrigger:     { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1 },
   pickerTriggerText: { fontSize: 13, fontFamily: 'DMSans_700Bold' },
-
-  // API key
-  apiKeyRow:       { borderTopWidth: 0.5, padding: 16, paddingTop: 12 },
-  inputLabel:      { fontSize: 11, fontFamily: 'DMSans_700Bold', letterSpacing: 0.6, marginBottom: 6 },
-  apiKeyInputWrap: { flexDirection: 'row', gap: 8 },
-  apiKeyInput:     { flex: 1, borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, fontFamily: 'DMSans_400Regular' },
-  eyeBtn:          { width: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
 
   // About
   aboutHero:    { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 20, borderBottomWidth: 0.5 },

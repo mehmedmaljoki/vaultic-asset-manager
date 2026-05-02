@@ -13,14 +13,14 @@ import { NISAB_SILVER_G, NISAB_GOLD_G } from '@/lib/models/PriceMap';
 import type { Asset } from '@/lib/models/Asset';
 
 // ── Zakat rules per category ──────────────────────────────────────────────────
-const RULES: Record<string, { zakatable: boolean; note: string }> = {
-  metals:       { zakatable: true,  note: 'Full value zakatable' },
-  money:        { zakatable: true,  note: 'Full value zakatable' },
-  crypto:       { zakatable: true,  note: 'Treated as trade goods' },
-  jewelry:      { zakatable: true,  note: 'Zakatable if gold/silver' },
-  real_estate:  { zakatable: false, note: 'Not zakatable (personal use)' },
-  vehicle:      { zakatable: false, note: 'Not zakatable (personal use)' },
-  collectibles: { zakatable: false, note: 'Not zakatable unless for trade' },
+const RULES: Record<string, { zakatable: boolean; noteKey: string }> = {
+  metals:       { zakatable: true,  noteKey: 'zakat_rule_full' },
+  money:        { zakatable: true,  noteKey: 'zakat_rule_full' },
+  crypto:       { zakatable: true,  noteKey: 'zakat_rule_trade' },
+  jewelry:      { zakatable: true,  noteKey: 'zakat_rule_jewelry' },
+  real_estate:  { zakatable: false, noteKey: 'zakat_rule_personal' },
+  vehicle:      { zakatable: false, noteKey: 'zakat_rule_personal' },
+  collectibles: { zakatable: false, noteKey: 'zakat_rule_trade_only' },
 };
 
 // ── Toggle switch ─────────────────────────────────────────────────────────────
@@ -37,6 +37,7 @@ function Toggle({ value, onChange, th }: { value: boolean; onChange: () => void;
 
 // ── Info bottom sheet ─────────────────────────────────────────────────────────
 function InfoSheet({ visible, onClose, th }: { visible: boolean; onClose: () => void; th: Theme }) {
+  const { t } = useApp();
   const insets = useSafeAreaInsets();
   if (!visible) return null;
   return (
@@ -45,37 +46,25 @@ function InfoSheet({ visible, onClose, th }: { visible: boolean; onClose: () => 
       <View style={[s.sheet, { backgroundColor: th.sur, paddingBottom: insets.bottom + 20 }]}>
         <View style={[s.sheetHandle, { backgroundColor: th.bdr2 }]} />
         <View style={[s.sheetHeader, { borderBottomColor: th.bdr }]}>
-          <Text style={[s.sheetTitle, { color: th.tx }]}>About Zakat</Text>
+          <Text style={[s.sheetTitle, { color: th.tx }]}>{t('zakat_about_title')}</Text>
           <Pressable onPress={onClose} style={[s.sheetClose, { backgroundColor: th.hov }]}>
             <Ionicons name="close" size={18} color={th.tx2} />
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
           {[
-            {
-              bold: 'Zakat',
-              text: ' is one of the five pillars of Islam — an annual 2.5% contribution on wealth above the nisab threshold held for one lunar year (Hawl).',
-            },
-            {
-              bold: 'Nisab (Silver):',
-              text: ' 612.36g — the more common Hanafi standard.',
-            },
-            {
-              bold: 'Nisab (Gold):',
-              text: ' 85g — stricter, higher threshold.',
-            },
-            {
-              bold: 'Zakatable:',
-              text: ' gold, silver, cash, trade goods, crypto. Personal-use items (home, car) are generally exempt.',
-            },
-          ].map(({ bold, text }, i) => (
+            { boldKey: 'zakat_info_pillar_bold',     textKey: 'zakat_info_pillar_text' },
+            { boldKey: 'zakat_info_silver_bold',     textKey: 'zakat_info_silver_text' },
+            { boldKey: 'zakat_info_gold_bold',       textKey: 'zakat_info_gold_text' },
+            { boldKey: 'zakat_info_zakatable_bold',  textKey: 'zakat_info_zakatable_text' },
+          ].map(({ boldKey, textKey }, i) => (
             <Text key={i} style={[s.infoText, { color: th.tx2, marginBottom: 14 }]}>
-              <Text style={{ color: th.tx, fontFamily: 'DMSans_700Bold' }}>{bold}</Text>
-              {text}
+              <Text style={{ color: th.tx, fontFamily: 'DMSans_700Bold' }}>{t(boldKey)}</Text>
+              {t(textKey)}
             </Text>
           ))}
           <Text style={[s.infoDisclaimer, { color: th.redTx }]}>
-            This app is a guide only. Consult a qualified scholar for your personal Zakat obligation.
+            {t('zakat_info_disclaimer')}
           </Text>
         </ScrollView>
       </View>
@@ -85,15 +74,15 @@ function InfoSheet({ visible, onClose, th }: { visible: boolean; onClose: () => 
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function ZakatScreen() {
-  const { th, fmt, t, privacyMode, prices } = useApp();
+  const { th, fmt, t, privacyMode, prices, fxRates } = useApp();
   const blur = privacyMode ? '••••' : null;
 
-  const { assets } = useAssets(prices);
+  const { assets } = useAssets(prices, fxRates);
   const [nisabType, setNisabType] = useState<'silver' | 'gold'>('silver');
   const [overrides, setOverrides] = useState<Partial<Record<Asset['type'], boolean>>>({});
   const [showInfo, setShowInfo] = useState(false);
 
-  const zakatResult = useZakat(assets, prices, nisabType, overrides);
+  const zakatResult = useZakat(assets, prices, nisabType, overrides, fxRates);
   const { nisabValue, totalWorth, zakatableTotal, zakatDue, aboveNisab, breakdown } = zakatResult;
 
   const nisabValues = {
@@ -104,24 +93,28 @@ export default function ZakatScreen() {
 
   const grouped = breakdown
     .filter(b => b.total != null && b.total > 0)
-    .map(b => ({
-      ...CATEGORIES.find(c => c.id === b.categoryId)!,
-      catAssets: assets.filter(a => a.type === b.categoryId),
-      total:     b.total ?? 0,
-      rule:      RULES[b.categoryId] ?? { zakatable: false, note: '' },
-      isZakatable: b.isZakatable,
-    }));
+    .map(b => {
+      const cat = CATEGORIES.find(c => c.id === b.categoryId)!;
+      return {
+        ...cat,
+        name:        t(cat.nameKey),
+        catAssets:   assets.filter(a => a.type === b.categoryId),
+        total:       b.total ?? 0,
+        rule:        RULES[b.categoryId] ?? { zakatable: false, noteKey: '' },
+        isZakatable: b.isZakatable,
+      };
+    });
 
   function toggleOverride(id: string, current: boolean) {
     setOverrides(prev => ({ ...prev, [id as Asset['type']]: !current }));
   }
 
   const summaryRows = [
-    { label: 'Total assets',      val: blur ?? fmt(totalWorth),                              hi: false },
-    { label: 'Zakatable wealth',  val: blur ?? fmt(zakatableTotal),                          hi: false },
-    { label: 'Nisab threshold',   val: nisabEur != null ? (blur ?? fmt(nisabEur)) : '–',     hi: false },
-    { label: 'Zakat rate',        val: '2.5%',                                               hi: false },
-    { label: 'Zakat due',         val: blur ?? fmt(zakatDue),                                hi: true  },
+    { label: t('zakat_total_assets'),     val: blur ?? fmt(totalWorth),                              hi: false },
+    { label: t('zakat_zakatable_wealth'), val: blur ?? fmt(zakatableTotal),                          hi: false },
+    { label: t('zakat_threshold'),        val: nisabEur != null ? (blur ?? fmt(nisabEur)) : '–',     hi: false },
+    { label: t('zakat_rate'),             val: '2.5%',                                               hi: false },
+    { label: t('zakat_due_label'),        val: blur ?? fmt(zakatDue),                                hi: true  },
   ];
 
   return (
@@ -133,20 +126,20 @@ export default function ZakatScreen() {
         {/* ── Header ─────────────────────────────────────────────── */}
         <View style={[s.header, { backgroundColor: th.sur }]}>
           <View style={{ flex: 1 }}>
-            <Text style={[s.headerTitle, { color: th.tx }]}>Zakat</Text>
+            <Text style={[s.headerTitle, { color: th.tx }]}>{t('zakat_title')}</Text>
             <Text style={[s.headerSub,   { color: th.tx2 }]}>{t('zakat_method')}</Text>
           </View>
           <Pressable
             onPress={() => setShowInfo(true)}
             style={({ pressed }) => [s.infoBtn, { backgroundColor: pressed ? th.hov : th.sur2, borderColor: th.bdr }]}
           >
-            <Text style={[s.infoBtnText, { color: th.tx2 }]}>About</Text>
+            <Text style={[s.infoBtnText, { color: th.tx2 }]}>{t('zakat_about')}</Text>
           </Pressable>
         </View>
 
         {/* ── Nisab selector ─────────────────────────────────────── */}
         <View style={[s.card, { backgroundColor: th.sur, ...th.shadow }]}>
-          <Text style={[s.cardLabel, { color: th.tx2 }]}>NISAB STANDARD</Text>
+          <Text style={[s.cardLabel, { color: th.tx2 }]}>{t('zakat_nisab_label').toUpperCase()}</Text>
           <View style={s.nisabRow}>
             {([
               { id: 'silver', label: t('zakat_silver'), sub: `${NISAB_SILVER_G}g`, val: nisabValues.silver },
@@ -168,34 +161,34 @@ export default function ZakatScreen() {
             })}
           </View>
           <Text style={[s.nisabNote, { color: th.tx2 }]}>
-            Current nisab ({nisabType}): <Text style={[s.nisabNoteStrong, { color: th.tx }]}>{nisabEur != null ? (blur ?? fmt(nisabEur)) : '–'}</Text>
+            {t('zakat_current_nisab')} ({nisabType}): <Text style={[s.nisabNoteStrong, { color: th.tx }]}>{nisabEur != null ? (blur ?? fmt(nisabEur)) : '–'}</Text>
           </Text>
         </View>
 
         {/* ── Result card ────────────────────────────────────────── */}
         <View style={[s.resultCard, { backgroundColor: aboveNisab ? th.acc : th.tx3, ...th.shadow2 }]}>
           <Text style={s.resultLabel}>
-            {aboveNisab ? 'ZAKAT DUE' : 'BELOW NISAB'}
+            {aboveNisab ? t('zakat_due_caps') : t('zakat_below_nisab_caps')}
           </Text>
           <Text style={s.resultAmount}>{blur ?? fmt(zakatDue)}</Text>
           <Text style={s.resultSub}>
             {privacyMode ? '••••'
               : aboveNisab
-                ? `2.5% of ${fmt(zakatableTotal)} zakatable wealth`
-                : `${fmt(zakatableTotal)} is below threshold of ${nisabEur != null ? fmt(nisabEur) : '–'}`}
+                ? `${t('zakat_2_5_of')} ${fmt(zakatableTotal)} ${t('zakat_zakatable')}`
+                : `${fmt(zakatableTotal)} ${t('zakat_below_note')} ${nisabEur != null ? fmt(nisabEur) : '–'}`}
           </Text>
           {aboveNisab && (
             <View style={s.hawlBadge}>
-              <Text style={s.hawlText}>⚠ Ensure one full lunar year (Hawl) has passed on this wealth.</Text>
+              <Text style={s.hawlText}>{t('zakat_hawl_warning')}</Text>
             </View>
           )}
         </View>
 
         {/* ── Category breakdown ─────────────────────────────────── */}
         <View style={[s.card, { backgroundColor: th.sur, ...th.shadow }]}>
-          <Text style={[s.sectionTitle, { color: th.tx }]}>Asset Categories</Text>
+          <Text style={[s.sectionTitle, { color: th.tx }]}>{t('zakat_categories')}</Text>
           {grouped.length === 0 && (
-            <Text style={[s.emptyText, { color: th.tx3 }]}>No assets added yet.</Text>
+            <Text style={[s.emptyText, { color: th.tx3 }]}>{t('zakat_no_assets')}</Text>
           )}
           {grouped.map((g, i) => (
             <View
@@ -214,7 +207,7 @@ export default function ZakatScreen() {
               </View>
               <View style={s.categoryNote}>
                 <Text style={[s.categoryNoteText, { color: th.tx3 }]}>
-                  {g.rule.note} · {g.catAssets.length} item{g.catAssets.length !== 1 ? 's' : ''}
+                  {g.rule.noteKey ? t(g.rule.noteKey) : ''} · {g.catAssets.length} {t('dash_items')}
                   {g.isZakatable && g.total > 0 && (
                     <Text style={{ color: th.accTx, fontFamily: 'DMSans_700Bold' }}>
                       {'  →  '}{blur ?? fmt(g.total * 0.025)}
@@ -229,7 +222,7 @@ export default function ZakatScreen() {
         {/* ── Summary table (only if above nisab) ────────────────── */}
         {aboveNisab && (
           <View style={[s.card, { backgroundColor: th.sur, ...th.shadow }]}>
-            <Text style={[s.sectionTitle, { color: th.tx }]}>Calculation Summary</Text>
+            <Text style={[s.sectionTitle, { color: th.tx }]}>{t('zakat_summary')}</Text>
             {summaryRows.map(row => (
               <View key={row.label} style={[s.summaryRow, { borderBottomColor: th.bdr }]}>
                 <Text style={[s.summaryLabel, { color: th.tx2 }]}>{row.label}</Text>

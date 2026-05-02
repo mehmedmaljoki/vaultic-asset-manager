@@ -38,7 +38,8 @@ export function computeZakat(
   assets: Asset[],
   prices: Partial<LivePrices>,
   nisabType: 'silver' | 'gold',
-  overrides: Partial<Record<Asset['type'], boolean>>
+  overrides: Partial<Record<Asset['type'], boolean>>,
+  fxRates: Record<string, number> = {},
 ): ZakatResult {
   const nisabGrams    = nisabType === 'silver' ? NISAB_SILVER_G : NISAB_GOLD_G;
   const nisabPriceKey = nisabType === 'silver' ? 'silver' : 'gold';
@@ -48,7 +49,7 @@ export function computeZakat(
   const byCategory = new Map<Asset['type'], number | null>();
 
   for (const asset of assets) {
-    const val = calcValue(asset, prices);
+    const val = calcValue(asset, prices, fxRates);
     const cur = byCategory.get(asset.type);
     if (val == null) {
       if (cur === undefined) byCategory.set(asset.type, null);

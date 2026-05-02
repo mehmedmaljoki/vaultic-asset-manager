@@ -2,7 +2,7 @@ export interface Settings {
   currency: string;
   themeMode: 'light' | 'dark' | 'system';
   privacyMode: boolean;
-  apiProvider: 'goldapi' | 'mock';
+  apiProvider: 'goldapi';
   apiKey: string;
   language: string;
 }

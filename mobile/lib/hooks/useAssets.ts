@@ -7,6 +7,7 @@ import {
   getAssets, addAsset, updateAsset, deleteAsset, getTotalWorth,
 } from '../services/AssetService';
 import { dbGetHistory } from '../repositories/HistoryRepository';
+import { useApp } from '../AppContext';
 
 export interface UseAssetsResult {
   assets:     Asset[];
@@ -19,8 +20,12 @@ export interface UseAssetsResult {
   handleDelete: (id: string) => Promise<void>;
 }
 
-export function useAssets(prices: Partial<LivePrices>): UseAssetsResult {
+export function useAssets(
+  prices: Partial<LivePrices>,
+  fxRates: Record<string, number> = {},
+): UseAssetsResult {
   const db = useSQLiteContext();
+  const { dataVersion, notifyDataChanged } = useApp();
   const [assets, setAssets]   = useState<Asset[]>([]);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,30 +38,30 @@ export function useAssets(prices: Partial<LivePrices>): UseAssetsResult {
     setLoading(false);
   }, [db]);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => { reload(); }, [reload, dataVersion]);
 
   const handleAdd = useCallback(async (data: Omit<Asset, 'id' | 'createdAt'>) => {
-    await addAsset(db, data, prices);
-    await reload();
-  }, [db, prices, reload]);
+    await addAsset(db, data, prices, fxRates);
+    await notifyDataChanged();
+  }, [db, prices, fxRates, notifyDataChanged]);
 
   const handleUpdate = useCallback(async (
     id: string,
     data: Partial<Omit<Asset, 'id' | 'createdAt'>>
   ) => {
-    await updateAsset(db, id, data, prices);
-    await reload();
-  }, [db, prices, reload]);
+    await updateAsset(db, id, data, prices, fxRates);
+    await notifyDataChanged();
+  }, [db, prices, fxRates, notifyDataChanged]);
 
   const handleDelete = useCallback(async (id: string) => {
-    await deleteAsset(db, id, prices);
-    await reload();
-  }, [db, prices, reload]);
+    await deleteAsset(db, id, prices, fxRates);
+    await notifyDataChanged();
+  }, [db, prices, fxRates, notifyDataChanged]);
 
   return {
     assets,
     history,
-    totalWorth: getTotalWorth(assets, prices),
+    totalWorth: getTotalWorth(assets, prices, fxRates),
     loading,
     reload,
     handleAdd,

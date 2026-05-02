@@ -4,6 +4,7 @@ import type { Debt } from '../models/Debt';
 import {
   getDebts, addDebt, adjustDebt, deleteDebt, splitDebt,
 } from '../services/DebtService';
+import { useApp } from '../AppContext';
 
 export interface UseDebtsResult {
   debts:    Debt[];
@@ -19,6 +20,7 @@ export interface UseDebtsResult {
 
 export function useDebts(): UseDebtsResult {
   const db = useSQLiteContext();
+  const { dataVersion, notifyDataChanged } = useApp();
   const [debts, setDebts]   = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,31 +30,31 @@ export function useDebts(): UseDebtsResult {
     setLoading(false);
   }, [db]);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => { reload(); }, [reload, dataVersion]);
 
   const handleAdd = useCallback(async (
     data: Omit<Debt, 'id' | 'createdAt' | 'transactions'>
   ) => {
     await addDebt(db, data);
-    await reload();
-  }, [db, reload]);
+    await notifyDataChanged();
+  }, [db, notifyDataChanged]);
 
   const handleAdjust = useCallback(async (
     id: string, delta: number, note: string, currentAmount: number
   ) => {
     await adjustDebt(db, id, delta, note, currentAmount);
-    await reload();
-  }, [db, reload]);
+    await notifyDataChanged();
+  }, [db, notifyDataChanged]);
 
   const handleDelete = useCallback(async (id: string) => {
     await deleteDebt(db, id);
-    await reload();
-  }, [db, reload]);
+    await notifyDataChanged();
+  }, [db, notifyDataChanged]);
 
   const handleSplit = useCallback(async (debt: Debt) => {
     await splitDebt(db, debt);
-    await reload();
-  }, [db, reload]);
+    await notifyDataChanged();
+  }, [db, notifyDataChanged]);
 
   const totOwed = debts
     .filter(d => d.direction === 'owed_to_me')

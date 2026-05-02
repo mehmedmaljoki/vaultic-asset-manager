@@ -9,6 +9,7 @@ export const TABLES = {
   HISTORY:           'history',
   SETTINGS:          'settings',
   PRICE_CACHE:       'price_cache',
+  FX_CACHE:          'fx_cache',
 } as const;
 
 export async function applyMigrations(db: SQLiteDatabase): Promise<void> {
@@ -66,5 +67,35 @@ export async function applyMigrations(db: SQLiteDatabase): Promise<void> {
       fetched_at TEXT NOT NULL,
       PRIMARY KEY (symbol, currency)
     );
+
+    CREATE TABLE IF NOT EXISTS ${TABLES.FX_CACHE} (
+      base       TEXT NOT NULL,
+      currency   TEXT NOT NULL,
+      rate       REAL NOT NULL,
+      fetched_at TEXT NOT NULL,
+      PRIMARY KEY (base, currency)
+    );
   `);
+
+  // Additive: ensure 'currency' and 'purity' columns exist on older assets tables.
+  const cols = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${TABLES.ASSETS})`);
+  if (!cols.some(c => c.name === 'currency')) {
+    await db.execAsync(`ALTER TABLE ${TABLES.ASSETS} ADD COLUMN currency TEXT`);
+  }
+  if (!cols.some(c => c.name === 'purity')) {
+    await db.execAsync(`ALTER TABLE ${TABLES.ASSETS} ADD COLUMN purity REAL`);
+  }
+
+  // One-time cleanup of legacy seedDemo() rows. Runs on installs that previously
+  // had the demo data; idempotent — once the `seeded` flag is gone, this is a no-op.
+  const seededFlag = await db.getFirstAsync<{ value: string }>(
+    `SELECT value FROM ${TABLES.SETTINGS} WHERE key = 'seeded'`
+  );
+  if (seededFlag) {
+    await db.runAsync(`DELETE FROM ${TABLES.ASSETS}            WHERE id LIKE 'seed_%'`);
+    await db.runAsync(`DELETE FROM ${TABLES.DEBT_TRANSACTIONS} WHERE id LIKE 'seed_%'`);
+    await db.runAsync(`DELETE FROM ${TABLES.DEBTS}             WHERE id LIKE 'seed_%'`);
+    await db.runAsync(`DELETE FROM ${TABLES.HISTORY}`);
+    await db.runAsync(`DELETE FROM ${TABLES.SETTINGS} WHERE key = 'seeded'`);
+  }
 }

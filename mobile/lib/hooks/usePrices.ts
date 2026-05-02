@@ -13,7 +13,7 @@ export interface UsePricesResult {
   refresh:   () => Promise<void>;
 }
 
-export function usePrices(settings: Settings): UsePricesResult {
+export function usePrices(settings: Settings, dataVersion = 0): UsePricesResult {
   const db = useSQLiteContext();
   const [result, setResult] = useState<PriceFetchResult | null>(null);
   const [loading, setLoading]  = useState(false);
@@ -34,7 +34,7 @@ export function usePrices(settings: Settings): UsePricesResult {
   useEffect(() => {
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.currency, settings.apiProvider]);
+  }, [settings.currency, settings.apiProvider, dataVersion]);
 
   // Reload when app comes back to foreground
   useEffect(() => {

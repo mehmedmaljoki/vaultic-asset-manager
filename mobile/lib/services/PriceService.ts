@@ -87,13 +87,9 @@ function isFresh(fetchedAt: string | null | undefined): boolean {
 export async function fetchPrices(
   db: SQLiteDatabase,
   currency: string,
-  provider: 'goldapi' | 'mock'
+  _provider: 'goldapi' = 'goldapi'
 ): Promise<PriceFetchResult> {
   const { prices: cached, fetchedAt } = await dbGetPriceCache(db, currency);
-
-  if (provider === 'mock') {
-    return { prices: cached, source: 'cache', fetchedAt };
-  }
 
   // Check freshness for metals and crypto independently
   const metalKeys      = METAL_MAP.map(m => m.key);

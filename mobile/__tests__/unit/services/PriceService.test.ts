@@ -46,16 +46,6 @@ beforeEach(() => {
   mockUpsert.mockResolvedValue(undefined);
 });
 
-describe('fetchPrices — mock provider', () => {
-  it('returns cached prices without network call', async () => {
-    mockGetCache.mockResolvedValue({ prices: CACHED_PRICES, fetchedAt: { gold: FRESH_AT } });
-    const result = await fetchPrices(db, 'EUR', 'mock');
-    expect(mockFetch).not.toHaveBeenCalled();
-    expect(result.source).toBe('cache');
-    expect(result.prices.gold).toBe(126.0);
-  });
-});
-
 describe('fetchPrices — goldapi provider, cache fresh', () => {
   it('skips network call when all metal AND crypto prices are within 15-min TTL', async () => {
     mockGetCache.mockResolvedValue({ prices: CACHED_PRICES, fetchedAt: ALL_FRESH_AT });

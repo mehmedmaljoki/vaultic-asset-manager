@@ -5,6 +5,10 @@ import { mockDb } from '../../../__mocks__/expo-sqlite';
 jest.mock('expo-sqlite');
 jest.mock('../../../lib/services/AssetService');
 jest.mock('../../../lib/repositories/HistoryRepository');
+const mockNotify = jest.fn();
+jest.mock('../../../lib/AppContext', () => ({
+  useApp: () => ({ dataVersion: 0, notifyDataChanged: mockNotify }),
+}));
 
 const AssetService = require('../../../lib/services/AssetService');
 const { dbGetHistory } = require('../../../lib/repositories/HistoryRepository');
@@ -37,7 +41,7 @@ describe('useAssets', () => {
     AssetService.getTotalWorth.mockReturnValue(1000);
     const { result } = renderHook(() => useAssets({}));
     await act(async () => {});
-    expect(AssetService.getTotalWorth).toHaveBeenCalledWith([mockAsset], {});
+    expect(AssetService.getTotalWorth).toHaveBeenCalledWith([mockAsset], {}, {});
     expect(result.current.totalWorth).toBe(1000);
   });
 
@@ -52,9 +56,9 @@ describe('useAssets', () => {
     });
 
     expect(AssetService.addAsset).toHaveBeenCalledWith(
-      mockDb, { type: 'money', name: 'Savings', value: 500 }, prices
+      mockDb, { type: 'money', name: 'Savings', value: 500 }, prices, {}
     );
-    expect(AssetService.getAssets).toHaveBeenCalledTimes(2);
+    expect(mockNotify).toHaveBeenCalled();
   });
 
   it('handleUpdate calls updateAsset with prices then reloads', async () => {
@@ -66,8 +70,8 @@ describe('useAssets', () => {
       await result.current.handleUpdate('a1', { name: 'Updated' });
     });
 
-    expect(AssetService.updateAsset).toHaveBeenCalledWith(mockDb, 'a1', { name: 'Updated' }, {});
-    expect(AssetService.getAssets).toHaveBeenCalledTimes(2);
+    expect(AssetService.updateAsset).toHaveBeenCalledWith(mockDb, 'a1', { name: 'Updated' }, {}, {});
+    expect(mockNotify).toHaveBeenCalled();
   });
 
   it('handleDelete calls deleteAsset then reloads', async () => {
@@ -79,7 +83,7 @@ describe('useAssets', () => {
       await result.current.handleDelete('a1');
     });
 
-    expect(AssetService.deleteAsset).toHaveBeenCalledWith(mockDb, 'a1', {});
-    expect(AssetService.getAssets).toHaveBeenCalledTimes(2);
+    expect(AssetService.deleteAsset).toHaveBeenCalledWith(mockDb, 'a1', {}, {});
+    expect(mockNotify).toHaveBeenCalled();
   });
 });

@@ -11,6 +11,8 @@ function rowToAsset(row: Record<string, unknown>): Asset {
     quantity:    row.quantity != null ? (row.quantity as number) : undefined,
     unit:        (row.unit as string) ?? undefined,
     value:       row.value != null ? (row.value as number) : undefined,
+    currency:    (row.currency as string) ?? undefined,
+    purity:      row.purity != null ? (row.purity as number) : undefined,
     purchasedAt: (row.purchased_at as string) ?? undefined,
     createdAt:   row.created_at as string,
     updatedAt:   (row.updated_at as string) ?? undefined,
@@ -27,10 +29,11 @@ export async function dbGetAssets(db: SQLiteDatabase): Promise<Asset[]> {
 export async function dbAddAsset(db: SQLiteDatabase, asset: Asset): Promise<void> {
   await db.runAsync(
     `INSERT INTO ${TABLES.ASSETS}
-     (id, type, subtype, name, quantity, unit, value, purchased_at, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`,
+     (id, type, subtype, name, quantity, unit, value, currency, purity, purchased_at, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
     [asset.id, asset.type, asset.subtype ?? null, asset.name,
      asset.quantity ?? null, asset.unit ?? null, asset.value ?? null,
+     asset.currency ?? null, asset.purity ?? null,
      asset.purchasedAt ?? null, asset.createdAt, asset.updatedAt ?? null]
   );
 }
@@ -50,6 +53,8 @@ export async function dbUpdateAsset(
     ['quantity',     data.quantity],
     ['unit',         data.unit],
     ['value',        data.value],
+    ['currency',     data.currency],
+    ['purity',       data.purity],
     ['purchased_at', data.purchasedAt],
     ['updated_at',   data.updatedAt],
   ];

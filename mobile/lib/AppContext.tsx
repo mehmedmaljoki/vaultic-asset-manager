@@ -10,8 +10,10 @@ import { t as translate, LANGS, type LangCode } from './i18n';
 import { dbGetSettings, dbSaveSettings } from './repositories/SettingsRepository';
 import { SETTINGS_DEFAULTS, type Settings } from './models/Settings';
 import { usePrices, type UsePricesResult } from './hooks/usePrices';
+import { useFxRates } from './hooks/useFxRates';
 import type { LivePrices } from './models/PriceMap';
 import type { PriceSource } from './services/PriceService';
+import type { FxSource } from './services/FxService';
 
 // ── Context shape ─────────────────────────────────────────────────────────────
 interface AppCtx {
@@ -31,6 +33,13 @@ interface AppCtx {
   priceAgeMinutes: number | null;
   priceLoading: boolean;
   refreshPrices: () => Promise<void>;
+  // FX rates: multiplier `amount * fxRates[currency] = amount in settings.currency`.
+  // fxRates[settings.currency] is always 1.
+  fxRates:  Record<string, number>;
+  fxSource: FxSource | null;
+  // Data lifecycle — bumped on Clear/Import so dependent hooks reload
+  dataVersion: number;
+  notifyDataChanged: () => Promise<void>;
 }
 
 const Ctx = createContext<AppCtx | null>(null);
@@ -48,6 +57,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
 
   const [settings, setSettings] = useState<Settings>(SETTINGS_DEFAULTS);
   const [loaded, setLoaded]     = useState(false);
+  const [dataVersion, setDataVersion] = useState(0);
 
   useEffect(() => {
     dbGetSettings(db).then(s => { setSettings(s); setLoaded(true); });
@@ -59,7 +69,14 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     await dbSaveSettings(db, patch);
   }, [db, settings]);
 
-  const priceResult: UsePricesResult = usePrices(settings);
+  const notifyDataChanged = useCallback(async () => {
+    const fresh = await dbGetSettings(db);
+    setSettings(fresh);
+    setDataVersion(v => v + 1);
+  }, [db]);
+
+  const priceResult: UsePricesResult = usePrices(settings, dataVersion);
+  const fxResult = useFxRates(settings, dataVersion);
 
   const isDark =
     settings.themeMode === 'dark' ||
@@ -89,6 +106,9 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       priceAgeMinutes: priceResult.ageMinutes,
       priceLoading:    priceResult.loading,
       refreshPrices:   priceResult.refresh,
+      fxRates:         fxResult.rates,
+      fxSource:        fxResult.source,
+      dataVersion, notifyDataChanged,
     }}>
       {children}
     </Ctx.Provider>
