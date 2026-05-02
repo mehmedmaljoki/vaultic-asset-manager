@@ -32,3 +32,10 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# custom
+/graphify-out/*
+
+/.agents/*
+/.claude/*
+skills-lock.json
