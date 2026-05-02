@@ -25,7 +25,7 @@ const T: Record<LangCode, Strings> = {
 en:{
   nav_overview:'Overview',nav_assets:'Assets',nav_zakat:'Zakat',nav_debts:'Debts',nav_settings:'Settings',
   dash_net_worth:'Net Worth',dash_past_days:'past 60 days',dash_assets_label:'Assets',dash_net:'Net',
-  dash_owed_to_me:'Owed to me',dash_i_owe:'I owe',dash_breakdown:'Breakdown',dash_live_prices:'Live Prices (mock)',
+  dash_owed_to_me:'Owed to me',dash_i_owe:'I owe',dash_breakdown:'Breakdown',dash_live_prices:'Live Prices',
   dash_items:'items',dash_receivable:'receivable',dash_payable:'payable',dash_total_net:'total net worth',
   asset_title:'Assets',asset_add:'+ Add',asset_history:'History',asset_no_assets:'No assets yet — tap + Add',
   asset_all:'All',asset_name:'Asset Name',asset_value:'Value',asset_quantity:'Quantity',asset_category:'Category',
@@ -63,7 +63,7 @@ en:{
 de:{
   nav_overview:'Übersicht',nav_assets:'Vermögen',nav_zakat:'Zakat',nav_debts:'Schulden',nav_settings:'Einstellungen',
   dash_net_worth:'Nettovermögen',dash_past_days:'letzte 60 Tage',dash_assets_label:'Vermögen',dash_net:'Netto',
-  dash_owed_to_me:'Mir geschuldet',dash_i_owe:'Ich schulde',dash_breakdown:'Aufschlüsselung',dash_live_prices:'Live-Preise (simuliert)',
+  dash_owed_to_me:'Mir geschuldet',dash_i_owe:'Ich schulde',dash_breakdown:'Aufschlüsselung',dash_live_prices:'Live-Preise',
   dash_items:'Einträge',dash_receivable:'Forderungen',dash_payable:'Verbindlichkeiten',dash_total_net:'Gesamtnettovermögen',
   asset_title:'Vermögen',asset_add:'+ Hinzufügen',asset_history:'Verlauf',asset_no_assets:'Noch keine Einträge',
   asset_all:'Alle',asset_name:'Bezeichnung',asset_value:'Wert',asset_quantity:'Menge',asset_category:'Kategorie',

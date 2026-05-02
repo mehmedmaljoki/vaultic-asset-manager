@@ -53,7 +53,11 @@ AsyncStorage is kept only for the one-time migration on first launch.
 TTL is enforced inside `PriceService` — the `refresh()` UI action returns cached data
 silently when called within the 15-minute window. Badge shows `CACHED · Xm ago`.
 
-**Crypto pricing:** TBD. UI shows `"–"` when no cached data exists for a crypto asset.
+**Crypto pricing — CoinGecko:**
+`GET https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,binancecoin&vs_currencies=eur`
+Free public endpoint, no auth. Single batched call for all 4 cryptos. Currency must be lowercase.
+BNB is `binancecoin` on CoinGecko. Same 15-min TTL as metals. Fetched independently of metals.
+
 **No hardcoded prices anywhere.** The `price_cache` table is the single source of truth.
 
 ## Zakat
