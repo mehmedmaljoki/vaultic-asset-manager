@@ -518,8 +518,8 @@ export default function AssetsScreen() {
         }
         renderItem={({ item: asset }) => {
           const cat = CATEGORIES.find(c => c.id === asset.type) ?? CATEGORIES[0];
-          const val = calcValue(asset, prices) ?? 0;
-          const pct = totalWorth > 0 ? (val / totalWorth * 100).toFixed(1) : '0.0';
+          const val = calcValue(asset, prices);
+          const pct = val != null && totalWorth > 0 ? (val / totalWorth * 100).toFixed(1) : null;
           return (
             <Pressable
               onPress={() => setDetailAsset(asset)}
@@ -538,8 +538,8 @@ export default function AssetsScreen() {
                 </Text>
               </View>
               <View style={s.assetRight}>
-                <Text style={[s.assetVal, { color: th.tx }]}>{blur ?? fmt(val)}</Text>
-                <Text style={[s.assetPct, { color: th.tx3 }]}>{privacyMode ? '–' : `${pct}%`}</Text>
+                <Text style={[s.assetVal, { color: th.tx }]}>{blur ?? (val != null ? fmt(val) : '–')}</Text>
+                <Text style={[s.assetPct, { color: th.tx3 }]}>{privacyMode ? '–' : pct != null ? `${pct}%` : '–'}</Text>
               </View>
             </Pressable>
           );
