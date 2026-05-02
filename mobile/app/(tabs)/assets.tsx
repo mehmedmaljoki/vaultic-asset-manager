@@ -9,12 +9,12 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { type Theme } from '@/lib/colors';
-import {
-  getAssets, getHistory, addAsset, updateAsset, deleteAsset,
-  calcValue, getTotalWorth, MOCK_PRICES, CATEGORIES,
-} from '@/lib/data';
 import { useApp } from '@/lib/AppContext';
-import type { Asset, HistoryPoint } from '@/lib/types';
+import { useAssets } from '@/lib/hooks/useAssets';
+import { calcValue } from '@/lib/services/AssetService';
+import { CATEGORIES } from '@/lib/models/Category';
+import type { Asset } from '@/lib/models/Asset';
+import type { HistoryPoint } from '@/lib/models/History';
 
 const METAL_TYPES  = ['gold','silver','platinum','palladium'];
 const CRYPTO_TYPES = ['bitcoin','ethereum','solana','bnb'];
@@ -164,10 +164,10 @@ function ActionBtn({ label, variant = 'primary', onPress, th }: {
 function AssetDetail({ asset, onEdit, onDelete }: {
   asset: Asset; onEdit: (a: Asset) => void; onDelete: (id: string) => void;
 }) {
-  const { th, fmt, t, privacyMode } = useApp();
+  const { th, fmt, t, privacyMode, prices } = useApp();
   const blur = privacyMode ? '••••' : null;
   const cat = CATEGORIES.find(c => c.id === asset.type) ?? CATEGORIES[0];
-  const val = calcValue(asset);
+  const val = calcValue(asset, prices) ?? 0;
   const [confirmDel, setConfirmDel] = useState(false);
 
   const rows = [
@@ -229,7 +229,8 @@ function AssetForm({ initial, onSave, onCancel }: {
   const needsSub   = type === 'metals' || type === 'crypto';
   const subtypeOpts = type === 'metals' ? METAL_TYPES : CRYPTO_TYPES;
   const unit       = needsSub ? (UNITS[type]?.[subtype] ?? '') : '';
-  const livePrice  = needsSub ? (MOCK_PRICES as Record<string,number>)[subtype] : null;
+  const { prices } = useApp();
+  const livePrice  = needsSub ? ((prices as Record<string,number|null|undefined>)[subtype] ?? null) : null;
   const liveVal    = livePrice && quantity ? (parseFloat(quantity) * livePrice) : null;
 
   const catOptions = CATEGORIES.map(c => ({ value: c.id, label: c.name }));
@@ -424,26 +425,17 @@ function fmtDate(iso: string): string {
 
 // ── Assets screen ─────────────────────────────────────────────────────────────
 export default function AssetsScreen() {
-  const { th, fmt, t, privacyMode } = useApp();
+  const { th, fmt, t, privacyMode, prices } = useApp();
   const blur = privacyMode ? '••••' : null;
 
-  const [assets,  setAssets]  = useState<Asset[]>([]);
-  const [history, setHistory] = useState<HistoryPoint[]>([]);
-  const [filter,  setFilter]  = useState('all');
+  const { assets, history, totalWorth, handleAdd, handleUpdate, handleDelete } = useAssets(prices);
 
+  const [filter,  setFilter]  = useState('all');
   const [showAdd,    setShowAdd]    = useState(false);
   const [editAsset,  setEditAsset]  = useState<Asset | null>(null);
   const [detailAsset,setDetailAsset]= useState<Asset | null>(null);
   const [showHistory,setShowHistory]= useState(false);
 
-  const load = useCallback(async () => {
-    setAssets(await getAssets());
-    setHistory(await getHistory());
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const total    = getTotalWorth(assets);
   const filtered = filter === 'all' ? assets : assets.filter(a => a.type === filter);
 
   const filterTabs = [
@@ -453,19 +445,17 @@ export default function AssetsScreen() {
 
   async function handleSaveAsset(data: Omit<Asset, 'id' | 'createdAt'>) {
     if (editAsset) {
-      await updateAsset(editAsset.id, data);
+      await handleUpdate(editAsset.id, data);
       setEditAsset(null);
     } else {
-      await addAsset(data);
+      await handleAdd(data);
       setShowAdd(false);
     }
-    await load();
   }
 
   async function handleDeleteAsset(id: string) {
-    await deleteAsset(id);
+    await handleDelete(id);
     setDetailAsset(null);
-    await load();
   }
 
   return (
@@ -475,7 +465,7 @@ export default function AssetsScreen() {
         <View style={{ flex: 1 }}>
           <Text style={[s.headerTitle, { color: th.tx }]}>{t('asset_title')}</Text>
           <Text style={[s.headerSub, { color: th.tx2 }]}>
-            {assets.length} {t('dash_items')} · {blur ?? fmt(total)}
+            {assets.length} {t('dash_items')} · {blur ?? fmt(totalWorth)}
           </Text>
         </View>
         <View style={s.headerBtns}>
@@ -528,8 +518,8 @@ export default function AssetsScreen() {
         }
         renderItem={({ item: asset }) => {
           const cat = CATEGORIES.find(c => c.id === asset.type) ?? CATEGORIES[0];
-          const val = calcValue(asset);
-          const pct = total > 0 ? (val / total * 100).toFixed(1) : '0.0';
+          const val = calcValue(asset, prices) ?? 0;
+          const pct = totalWorth > 0 ? (val / totalWorth * 100).toFixed(1) : '0.0';
           return (
             <Pressable
               onPress={() => setDetailAsset(asset)}

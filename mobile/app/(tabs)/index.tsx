@@ -9,13 +9,17 @@ import Svg, {
   Path, Circle, Defs, LinearGradient, Stop, Text as SvgText,
 } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
+import { useSQLiteContext } from 'expo-sqlite';
 import { type Theme } from '@/lib/colors';
-import {
-  getAssets, getHistory, getDebts, seedDemo,
-  calcValue, getTotalWorth, MOCK_PRICES, CATEGORIES,
-} from '@/lib/data';
 import { useApp } from '@/lib/AppContext';
-import type { Asset, HistoryPoint, Debt } from '@/lib/types';
+import { useAssets } from '@/lib/hooks/useAssets';
+import { useDebts } from '@/lib/hooks/useDebts';
+import { calcValue } from '@/lib/services/AssetService';
+import { seedDemo } from '@/lib/services/SeedService';
+import { CATEGORIES } from '@/lib/models/Category';
+import type { Asset } from '@/lib/models/Asset';
+import type { HistoryPoint } from '@/lib/models/History';
+import type { LivePrices } from '@/lib/models/PriceMap';
 
 // ── Chart math helpers ────────────────────────────────────────────────────────
 function buildPath(
@@ -415,10 +419,11 @@ function donutPath(
 }
 
 function BreakdownSheet({
-  visible, onClose, byCategory, total, assets: allAssets,
+  visible, onClose, byCategory, total, assets: allAssets, prices,
 }: {
   visible: boolean; onClose: () => void;
   byCategory: CatSlice[]; total: number; assets: Asset[];
+  prices: Partial<LivePrices>;
 }) {
   const { th, fmt } = useApp();
   const insets = useSafeAreaInsets();
@@ -604,7 +609,7 @@ function BreakdownSheet({
               <>
                 <Text style={[s.bdSectionTitle, { color: th.tx }]}>{sel.name}</Text>
                 {sel.catAssets.map((asset, i) => {
-                  const val = calcValue(asset);
+                  const val = calcValue(asset, prices) ?? 0;
                   const assetPct = sel.value > 0 ? (val / sel.value * 100) : 0;
                   return (
                     <View key={asset.id} style={[s.bdAssetRow, {
@@ -701,39 +706,33 @@ function SummaryCard({ label, value, sub, color, th }: {
 
 // ── Dashboard screen ──────────────────────────────────────────────────────────
 export default function DashboardScreen() {
-  const { th, fmt, t, privacyMode } = useApp();
+  const { th, fmt, t, privacyMode, prices, priceSource, priceAgeMinutes, refreshPrices } = useApp();
+  const db = useSQLiteContext();
 
-  const [assets,     setAssets]     = useState<Asset[]>([]);
-  const [history,    setHistory]    = useState<HistoryPoint[]>([]);
-  const [debts,      setDebts]      = useState<Debt[]>([]);
-  const [refreshing,    setRefreshing]    = useState(false);
   const [showChart,     setShowChart]     = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [refreshing,    setRefreshing]    = useState(false);
 
-  const load = useCallback(async () => {
-    await seedDemo();
-    const [a, h, d] = await Promise.all([getAssets(), getHistory(), getDebts()]);
-    setAssets(a); setHistory(h); setDebts(d);
-  }, []);
+  const { assets, history, totalWorth, reload: reloadAssets } = useAssets(prices);
+  const { debts, totOwed, totIowe }                           = useDebts();
 
-  useEffect(() => { load(); }, [load]);
+  // Seed demo data on first launch
+  useEffect(() => { seedDemo(db); }, [db]);
 
   async function handleRefresh() {
     setRefreshing(true);
-    await load();
+    await Promise.all([reloadAssets(), refreshPrices()]);
     setRefreshing(false);
   }
 
-  const total    = getTotalWorth(assets);
-  const totOwed  = debts.filter(d => d.direction === 'owed_to_me').reduce((s, d) => s + d.amount, 0);
-  const totIowe  = debts.filter(d => d.direction === 'i_owe').reduce((s, d) => s + d.amount, 0);
-  const netWorth = total + totOwed - totIowe;
+  const netWorth = totalWorth + totOwed - totIowe;
   const blur     = privacyMode ? '••••' : null;
 
   const byCategory = CATEGORIES
     .map(cat => ({
       ...cat,
-      value:     assets.filter(a => a.type === cat.id).reduce((s, a) => s + calcValue(a), 0),
+      value:     assets.filter(a => a.type === cat.id)
+                       .reduce((s, a) => s + (calcValue(a, prices) ?? 0), 0),
       count:     assets.filter(a => a.type === cat.id).length,
       catAssets: assets.filter(a => a.type === cat.id),
     }))
@@ -746,11 +745,17 @@ export default function DashboardScreen() {
     : '0.0';
   const changePos = parseFloat(change) >= 0;
 
-  const prices = [
-    { label: t('dash_gold_g'),   val: MOCK_PRICES.gold,    color: '#b8972a' },
-    { label: t('dash_silver_g'), val: MOCK_PRICES.silver,  color: '#808090' },
-    { label: 'Bitcoin',          val: MOCK_PRICES.bitcoin,  color: '#d85020' },
-    { label: 'Ethereum',         val: MOCK_PRICES.ethereum, color: '#5070d0' },
+  const priceSourceLabel =
+    priceSource === 'live'    ? `LIVE` :
+    priceSource === 'partial' ? `PARTIAL` :
+    priceSource === 'offline' ? `OFFLINE` :
+    priceAgeMinutes != null   ? `CACHED · ${priceAgeMinutes}m ago` : null;
+
+  const livePrices = [
+    { label: t('dash_gold_g'),   val: prices.gold,    color: '#b8972a' },
+    { label: t('dash_silver_g'), val: prices.silver,  color: '#808090' },
+    { label: 'Bitcoin',          val: prices.bitcoin,  color: '#d85020' },
+    { label: 'Ethereum',         val: prices.ethereum, color: '#5070d0' },
   ];
 
   return (
@@ -794,10 +799,10 @@ export default function DashboardScreen() {
 
         {/* ── 4 Summary cards ─────────────────────────────────── */}
         <View style={styles.cardsGrid}>
-          <SummaryCard label={t('dash_assets_label')} value={blur ?? fmt(total)}    sub={`${assets.length} ${t('dash_items')}`} color={th.acc} th={th} />
-          <SummaryCard label={t('dash_net')}          value={blur ?? fmt(netWorth)} sub={t('dash_total_net')}                   color={th.tx}  th={th} />
-          <SummaryCard label={t('dash_owed_to_me')}   value={blur ?? fmt(totOwed)}  sub={t('dash_receivable')}                  color={th.blu} th={th} />
-          <SummaryCard label={t('dash_i_owe')}        value={blur ?? fmt(totIowe)}  sub={t('dash_payable')}                     color={th.red} th={th} />
+          <SummaryCard label={t('dash_assets_label')} value={blur ?? fmt(totalWorth)} sub={`${assets.length} ${t('dash_items')}`} color={th.acc} th={th} />
+          <SummaryCard label={t('dash_net')}          value={blur ?? fmt(netWorth)}  sub={t('dash_total_net')}                   color={th.tx}  th={th} />
+          <SummaryCard label={t('dash_owed_to_me')}   value={blur ?? fmt(totOwed)}   sub={t('dash_receivable')}                  color={th.blu} th={th} />
+          <SummaryCard label={t('dash_i_owe')}        value={blur ?? fmt(totIowe)}   sub={t('dash_payable')}                     color={th.red} th={th} />
         </View>
 
         {/* ── Portfolio breakdown ──────────────────────────────── */}
@@ -810,7 +815,7 @@ export default function DashboardScreen() {
             <Ionicons name="chevron-forward" size={16} color={th.tx3} />
           </View>
           <View style={styles.breakdownRow}>
-            {byCategory.length > 0 && <PieChart data={byCategory} total={total} th={th} />}
+            {byCategory.length > 0 && <PieChart data={byCategory} total={totalWorth} th={th} />}
             <View style={styles.breakdownBars}>
               {byCategory.slice(0, 5).map(cat => (
                 <View key={cat.id} style={styles.barRow}>
@@ -822,7 +827,7 @@ export default function DashboardScreen() {
                     <Text style={[styles.barValue, { color: th.tx }]}>{blur ?? fmt(cat.value)}</Text>
                   </View>
                   <View style={[styles.barTrack, { backgroundColor: th.hov }]}>
-                    <View style={[styles.barFill, { width: `${((cat.value / total) * 100).toFixed(1)}%` as any, backgroundColor: cat.color }]} />
+                    <View style={[styles.barFill, { width: `${((cat.value / totalWorth) * 100).toFixed(1)}%` as any, backgroundColor: cat.color }]} />
                   </View>
                 </View>
               ))}
@@ -832,12 +837,21 @@ export default function DashboardScreen() {
 
         {/* ── Live prices ──────────────────────────────────────── */}
         <View style={[styles.section, { backgroundColor: th.sur, ...th.shadow }]}>
-          <Text style={[styles.pricesLabel, { color: th.tx2 }]}>{t('dash_live_prices').toUpperCase()}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <Text style={[styles.pricesLabel, { color: th.tx2, marginBottom: 0 }]}>{t('dash_live_prices').toUpperCase()}</Text>
+            {priceSourceLabel && (
+              <Text style={{ fontSize: 10, fontFamily: 'DMSans_700Bold', color: priceSource === 'live' ? th.accTx : th.tx3 }}>
+                {priceSourceLabel}
+              </Text>
+            )}
+          </View>
           <View style={styles.pricesGrid}>
-            {prices.map(p => (
+            {livePrices.map(p => (
               <View key={p.label} style={[styles.priceCell, { borderBottomColor: th.bdr }]}>
                 <Text style={[styles.priceName, { color: th.tx2 }]}>{p.label}</Text>
-                <Text style={[styles.priceVal, { color: p.color }]}>{fmt(p.val)}</Text>
+                <Text style={[styles.priceVal, { color: p.color }]}>
+                  {p.val != null ? fmt(p.val) : '–'}
+                </Text>
               </View>
             ))}
           </View>
@@ -859,8 +873,9 @@ export default function DashboardScreen() {
         visible={showBreakdown}
         onClose={() => setShowBreakdown(false)}
         byCategory={byCategory}
-        total={total}
+        total={totalWorth}
         assets={assets}
+        prices={prices}
       />
     </SafeAreaView>
   );

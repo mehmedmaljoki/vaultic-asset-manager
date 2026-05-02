@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import {
   View, Text, ScrollView, Pressable, TextInput, Modal,
-  StyleSheet, Linking, Share, Alert,
+  StyleSheet, Linking, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { type Theme } from '@/lib/colors';
-import { exportData, clearAllData } from '@/lib/data';
 import { useApp } from '@/lib/AppContext';
 import { LANGS } from '@/lib/i18n';
+import { useBackup } from '@/lib/hooks/useBackup';
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const CURRENCIES = [
@@ -30,18 +30,16 @@ const CURRENCIES = [
 ];
 
 const API_PROVIDERS = [
-  { id: 'mock',        name: 'Mock / Offline',   desc: 'No internet needed. Demo prices.' },
-  { id: 'coingecko',  name: 'CoinGecko (Free)', desc: 'Real-time crypto. No key needed.' },
-  { id: 'goldapi',    name: 'GoldAPI.io',        desc: 'Real-time metals. API key required.' },
-  { id: 'metals_live',name: 'Metals-API',        desc: 'Metals + crypto bundle. Key required.' },
+  { id: 'goldapi', name: 'GoldAPI.io',      desc: 'Real-time metals (XAU/XAG/XPT/XPD). No key needed.' },
+  { id: 'mock',    name: 'Mock / Offline',  desc: 'No internet needed. Demo prices for testing.' },
 ];
 
 const TECH_STACK = [
-  { name: 'React Native',        role: 'UI framework' },
-  { name: 'Expo SDK 54',         role: 'Build & native APIs' },
-  { name: 'AsyncStorage',        role: 'Private offline storage' },
-  { name: 'react-native-svg',    role: 'Charts' },
-  { name: 'Expo Router',         role: 'Navigation' },
+  { name: 'React Native',     role: 'UI framework' },
+  { name: 'Expo SDK 54',      role: 'Build & native APIs' },
+  { name: 'SQLite (expo-sqlite)', role: 'Private offline storage' },
+  { name: 'react-native-svg', role: 'Charts' },
+  { name: 'Expo Router',      role: 'Navigation' },
 ];
 
 // Feedback categories — labels resolved at render time via t()
@@ -164,11 +162,11 @@ function PickerModal({
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function SettingsScreen() {
   const { th, t, settings, patchSettings } = useApp();
+  const { status: backupStatus, handleExport, handleImport, handleClear: clearAll } = useBackup();
 
   const [apiKeyVisible,  setApiKeyVisible]  = useState(false);
   const [showCurrPicker, setShowCurrPicker] = useState(false);
   const [showLangPicker, setShowLangPicker] = useState(false);
-  const [backupStatus,   setBackupStatus]   = useState<'idle'|'working'|'done'>('idle');
   const [confirmClear,   setConfirmClear]   = useState(false);
   const [creditsOpen,    setCreditsOpen]    = useState(false);
 
@@ -181,20 +179,6 @@ export default function SettingsScreen() {
     patchSettings({ [key]: value } as Partial<typeof settings>);
   }
 
-  // ── Backup ────────────────────────────────────────────────────────────────
-  async function handleExport() {
-    setBackupStatus('working');
-    try {
-      const json = await exportData();
-      await Share.share({
-        message: json,
-        title: `oam-backup-${new Date().toISOString().slice(0, 10)}.json`,
-      });
-      setBackupStatus('done');
-    } catch { setBackupStatus('done'); }
-    setTimeout(() => setBackupStatus('idle'), 3000);
-  }
-
   // ── Clear ─────────────────────────────────────────────────────────────────
   function handleClear() {
     if (!confirmClear) { setConfirmClear(true); return; }
@@ -202,7 +186,7 @@ export default function SettingsScreen() {
       { text: 'Cancel', style: 'cancel', onPress: () => setConfirmClear(false) },
       {
         text: 'Delete everything', style: 'destructive',
-        onPress: async () => { await clearAllData(); setConfirmClear(false); },
+        onPress: async () => { await clearAll(); setConfirmClear(false); },
       },
     ]);
   }
@@ -220,7 +204,7 @@ export default function SettingsScreen() {
     ? `${CURRENCIES.find(c => c.code === settings.currency)!.symbol} ${settings.currency}`
     : settings.currency;
 
-  const needsKey = settings.apiProvider === 'goldapi' || settings.apiProvider === 'metals_live';
+  const needsKey = false; // Neither goldapi nor mock requires a key currently
 
   return (
     <SafeAreaView style={[s.root, { backgroundColor: th.bg }]} edges={['top']}>
@@ -279,7 +263,7 @@ export default function SettingsScreen() {
         <Section title={t('settings_api')} th={th}>
           {API_PROVIDERS.map((p, i) => (
             <Row key={p.id} label={p.name} sub={p.desc} last={i === API_PROVIDERS.length - 1 && !needsKey} th={th}>
-              <Radio checked={settings.apiProvider === p.id} onPress={() => patch('apiProvider', p.id)} th={th} />
+              <Radio checked={settings.apiProvider === p.id} onPress={() => patch('apiProvider', p.id as 'goldapi' | 'mock')} th={th} />
             </Row>
           ))}
           {needsKey && (
@@ -311,18 +295,19 @@ export default function SettingsScreen() {
         <Section title={t('settings_data')} th={th}>
           <Row label={t('settings_export')} sub={t('settings_export_sub')} th={th}>
             <SmallBtn
-              label={backupStatus === 'working' ? '…' : backupStatus === 'done' ? '✓' : t('settings_export_btn')}
+              label={backupStatus === 'exporting' ? '…' : backupStatus === 'success' ? '✓' : t('settings_export_btn')}
               bg={th.accBg}
               color={th.accTx}
               onPress={handleExport}
             />
           </Row>
           <Row label={t('settings_import')} sub={t('settings_import_sub')} th={th}>
-            <SmallBtn label={t('settings_import_btn')} bg={th.bluBg} color={th.bluTx} onPress={() =>
-              Alert.alert(t('settings_import'), 'Full file picker import coming in next release.', [
-                { text: t('asset_cancel'), style: 'cancel' },
-              ])
-            } />
+            <SmallBtn
+              label={backupStatus === 'importing' ? '…' : backupStatus === 'error' ? '✗' : t('settings_import_btn')}
+              bg={th.bluBg}
+              color={th.bluTx}
+              onPress={handleImport}
+            />
           </Row>
           <Row label={t('settings_clear')} sub={t('settings_clear_sub')} last th={th}>
             <SmallBtn

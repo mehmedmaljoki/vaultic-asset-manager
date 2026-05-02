@@ -9,6 +9,7 @@ import {
   DMSans_700Bold,
 } from '@expo-google-fonts/dm-sans';
 import { AppProvider, useApp } from '@/lib/AppContext';
+import DbProvider from '@/lib/db/DbProvider';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -38,8 +39,10 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <AppProvider>
-      <RootNavigator />
-    </AppProvider>
+    <DbProvider>
+      <AppProvider>
+        <RootNavigator />
+      </AppProvider>
+    </DbProvider>
   );
 }

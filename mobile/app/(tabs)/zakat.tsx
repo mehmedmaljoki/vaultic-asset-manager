@@ -1,13 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import {
   View, Text, ScrollView, Pressable, Modal, StyleSheet,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { type Theme } from '@/lib/colors';
-import { getAssets, calcValue, getTotalWorth, MOCK_PRICES, CATEGORIES } from '@/lib/data';
 import { useApp } from '@/lib/AppContext';
-import type { Asset } from '@/lib/types';
+import { useAssets } from '@/lib/hooks/useAssets';
+import { useZakat } from '@/lib/hooks/useZakat';
+import { CATEGORIES } from '@/lib/models/Category';
+import { NISAB_SILVER_G, NISAB_GOLD_G } from '@/lib/models/PriceMap';
+import type { Asset } from '@/lib/models/Asset';
 
 // ── Zakat rules per category ──────────────────────────────────────────────────
 const RULES: Record<string, { zakatable: boolean; note: string }> = {
@@ -82,50 +85,43 @@ function InfoSheet({ visible, onClose, th }: { visible: boolean; onClose: () => 
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function ZakatScreen() {
-  const { th, fmt, t, privacyMode } = useApp();
+  const { th, fmt, t, privacyMode, prices } = useApp();
   const blur = privacyMode ? '••••' : null;
 
-  const [assets, setAssets] = useState<Asset[]>([]);
+  const { assets } = useAssets(prices);
   const [nisabType, setNisabType] = useState<'silver' | 'gold'>('silver');
-  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  const [overrides, setOverrides] = useState<Partial<Record<Asset['type'], boolean>>>({});
   const [showInfo, setShowInfo] = useState(false);
 
-  const load = useCallback(async () => {
-    setAssets(await getAssets());
-  }, []);
+  const zakatResult = useZakat(assets, prices, nisabType, overrides);
+  const { nisabValue, totalWorth, zakatableTotal, zakatDue, aboveNisab, breakdown } = zakatResult;
 
-  useEffect(() => { load(); }, [load]);
-
-  const P = MOCK_PRICES;
   const nisabValues = {
-    silver: P.NISAB_SILVER_G * P.silver,
-    gold:   P.NISAB_GOLD_G   * P.gold,
+    silver: prices.silver != null ? NISAB_SILVER_G * prices.silver : null,
+    gold:   prices.gold   != null ? NISAB_GOLD_G   * prices.gold   : null,
   };
   const nisabEur = nisabValues[nisabType];
 
-  const grouped = CATEGORIES.map(cat => {
-    const catAssets = assets.filter(a => a.type === cat.id);
-    const total     = catAssets.reduce((s, a) => s + calcValue(a), 0);
-    const rule      = RULES[cat.id] ?? { zakatable: false, note: '' };
-    const isZakatable = overrides[cat.id] !== undefined ? overrides[cat.id] : rule.zakatable;
-    return { ...cat, catAssets, total, rule, isZakatable };
-  }).filter(g => g.total > 0);
-
-  const zakatableTotal = grouped.filter(g => g.isZakatable).reduce((s, g) => s + g.total, 0);
-  const aboveNisab     = zakatableTotal >= nisabEur;
-  const zakatDue       = aboveNisab ? zakatableTotal * 0.025 : 0;
-  const totalWorth     = getTotalWorth(assets);
+  const grouped = breakdown
+    .filter(b => b.total != null && b.total > 0)
+    .map(b => ({
+      ...CATEGORIES.find(c => c.id === b.categoryId)!,
+      catAssets: assets.filter(a => a.type === b.categoryId),
+      total:     b.total ?? 0,
+      rule:      RULES[b.categoryId] ?? { zakatable: false, note: '' },
+      isZakatable: b.isZakatable,
+    }));
 
   function toggleOverride(id: string, current: boolean) {
-    setOverrides(prev => ({ ...prev, [id]: !current }));
+    setOverrides(prev => ({ ...prev, [id as Asset['type']]: !current }));
   }
 
   const summaryRows = [
-    { label: 'Total assets',      val: blur ?? fmt(totalWorth),     hi: false },
-    { label: 'Zakatable wealth',  val: blur ?? fmt(zakatableTotal), hi: false },
-    { label: 'Nisab threshold',   val: blur ?? fmt(nisabEur),       hi: false },
-    { label: 'Zakat rate',        val: '2.5%',                      hi: false },
-    { label: 'Zakat due',         val: blur ?? fmt(zakatDue),       hi: true  },
+    { label: 'Total assets',      val: blur ?? fmt(totalWorth),                              hi: false },
+    { label: 'Zakatable wealth',  val: blur ?? fmt(zakatableTotal),                          hi: false },
+    { label: 'Nisab threshold',   val: nisabEur != null ? (blur ?? fmt(nisabEur)) : '–',     hi: false },
+    { label: 'Zakat rate',        val: '2.5%',                                               hi: false },
+    { label: 'Zakat due',         val: blur ?? fmt(zakatDue),                                hi: true  },
   ];
 
   return (
@@ -153,8 +149,8 @@ export default function ZakatScreen() {
           <Text style={[s.cardLabel, { color: th.tx2 }]}>NISAB STANDARD</Text>
           <View style={s.nisabRow}>
             {([
-              { id: 'silver', label: t('zakat_silver'), sub: `${P.NISAB_SILVER_G}g`, val: nisabValues.silver },
-              { id: 'gold',   label: t('zakat_gold'),   sub: `${P.NISAB_GOLD_G}g`,  val: nisabValues.gold   },
+              { id: 'silver', label: t('zakat_silver'), sub: `${NISAB_SILVER_G}g`, val: nisabValues.silver },
+              { id: 'gold',   label: t('zakat_gold'),   sub: `${NISAB_GOLD_G}g`,  val: nisabValues.gold   },
             ] as const).map(n => {
               const active = nisabType === n.id;
               return (
@@ -165,14 +161,14 @@ export default function ZakatScreen() {
                 >
                   <Text style={[s.nisabBtnLabel, { color: active ? '#fff' : th.tx2 }]}>{n.label}</Text>
                   <Text style={[s.nisabBtnSub,   { color: active ? 'rgba(255,255,255,0.85)' : th.tx3 }]}>
-                    {n.sub} · {blur ?? fmt(n.val)}
+                    {n.sub} · {n.val != null ? (blur ?? fmt(n.val)) : '–'}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
           <Text style={[s.nisabNote, { color: th.tx2 }]}>
-            Current nisab ({nisabType}): <Text style={[s.nisabNoteStrong, { color: th.tx }]}>{blur ?? fmt(nisabEur)}</Text>
+            Current nisab ({nisabType}): <Text style={[s.nisabNoteStrong, { color: th.tx }]}>{nisabEur != null ? (blur ?? fmt(nisabEur)) : '–'}</Text>
           </Text>
         </View>
 
@@ -186,7 +182,7 @@ export default function ZakatScreen() {
             {privacyMode ? '••••'
               : aboveNisab
                 ? `2.5% of ${fmt(zakatableTotal)} zakatable wealth`
-                : `${fmt(zakatableTotal)} is below threshold of ${fmt(nisabEur)}`}
+                : `${fmt(zakatableTotal)} is below threshold of ${nisabEur != null ? fmt(nisabEur) : '–'}`}
           </Text>
           {aboveNisab && (
             <View style={s.hawlBadge}>

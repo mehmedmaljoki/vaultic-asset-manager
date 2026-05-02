@@ -7,9 +7,9 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { type Theme } from '@/lib/colors';
-import { getDebts, addDebt, adjustDebt, deleteDebt, formatCurrency } from '@/lib/data';
 import { useApp } from '@/lib/AppContext';
-import type { Debt } from '@/lib/types';
+import { useDebts } from '@/lib/hooks/useDebts';
+import type { Debt } from '@/lib/models/Debt';
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -171,7 +171,9 @@ function DebtCard({
 }
 
 // ── Debt detail (transaction history) ────────────────────────────────────────
-function DebtDetail({ debt, th, onDelete }: { debt: Debt; th: Theme; onDelete: () => void }) {
+function DebtDetail({ debt, th, onDelete, onSplit }: {
+  debt: Debt; th: Theme; onDelete: () => void; onSplit: () => void;
+}) {
   const { fmt, t, privacyMode } = useApp();
   const blur = privacyMode ? '••••' : null;
   const [confirmDel, setConfirmDel] = useState(false);
@@ -208,6 +210,15 @@ function DebtDetail({ debt, th, onDelete }: { debt: Debt; th: Theme; onDelete: (
           </View>
         ))}
       </View>
+
+      {(debt.people?.length ?? 0) > 1 && (
+        <Pressable
+          onPress={onSplit}
+          style={({ pressed }) => [s.deleteBtn, { backgroundColor: pressed ? th.bluBg + 'cc' : th.bluBg, marginBottom: 8 }]}
+        >
+          <Text style={[s.deleteBtnText, { color: th.bluTx }]}>{t('debt_split')}</Text>
+        </Pressable>
+      )}
 
       {!confirmDel ? (
         <Pressable
@@ -350,44 +361,31 @@ export default function DebtsScreen() {
   const { th, fmt, t, privacyMode } = useApp();
   const blur = privacyMode ? '••••' : null;
 
-  const [debts, setDebts] = useState<Debt[]>([]);
-  const [tab,   setTab]   = useState<'owed_to_me' | 'i_owe'>('owed_to_me');
+  const {
+    debts, totOwed, totIowe,
+    handleAdd: addDebtHook, handleAdjust, handleDelete: deleteDebtHook, handleSplit,
+  } = useDebts();
 
+  const [tab,   setTab]   = useState<'owed_to_me' | 'i_owe'>('owed_to_me');
   const [showAdd,    setShowAdd]    = useState(false);
   const [detailDebt, setDetailDebt] = useState<Debt | null>(null);
   const [shareDebt,  setShareDebt]  = useState<Debt | null>(null);
 
-  const load = useCallback(async () => {
-    setDebts(await getDebts());
-  }, []);
+  const owedToMe  = debts.filter(d => d.direction === 'owed_to_me');
+  const iOwe      = debts.filter(d => d.direction === 'i_owe');
+  const current   = tab === 'owed_to_me' ? owedToMe : iOwe;
+  const net       = totOwed - totIowe;
 
-  useEffect(() => { load(); }, [load]);
-
-  const owedToMe = debts.filter(d => d.direction === 'owed_to_me');
-  const iOwe     = debts.filter(d => d.direction === 'i_owe');
-  const current  = tab === 'owed_to_me' ? owedToMe : iOwe;
-  const totOwed  = owedToMe.reduce((s, d) => s + d.amount, 0);
-  const totIowe  = iOwe.reduce((s, d) => s + d.amount, 0);
-  const net      = totOwed - totIowe;
-
-  // Keep detail debt in sync after adjustments
   const liveDetail = detailDebt ? debts.find(d => d.id === detailDebt.id) ?? detailDebt : null;
 
   async function handleAdd(data: Omit<Debt, 'id' | 'createdAt' | 'transactions'>) {
-    await addDebt(data);
+    await addDebtHook(data);
     setShowAdd(false);
-    await load();
-  }
-
-  async function handleAdjust(id: string, delta: number, note: string) {
-    await adjustDebt(id, delta, note);
-    await load();
   }
 
   async function handleDelete(id: string) {
-    await deleteDebt(id);
+    await deleteDebtHook(id);
     setDetailDebt(null);
-    await load();
   }
 
   return (
@@ -458,7 +456,7 @@ export default function DebtsScreen() {
             th={th}
             onDetail={() => setDetailDebt(debt)}
             onShare={() => setShareDebt(debt)}
-            onAdjust={(delta, note) => handleAdjust(debt.id, delta, note)}
+            onAdjust={(delta, note) => handleAdjust(debt.id, delta, note, debt.amount)}
           />
         )}
       />
@@ -479,6 +477,7 @@ export default function DebtsScreen() {
             debt={liveDetail}
             th={th}
             onDelete={() => handleDelete(liveDetail.id)}
+            onSplit={() => { handleSplit(liveDetail); setDetailDebt(null); }}
           />
         )}
       </BottomSheet>
