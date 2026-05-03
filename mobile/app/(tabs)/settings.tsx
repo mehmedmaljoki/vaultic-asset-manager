@@ -140,7 +140,6 @@ export default function SettingsScreen() {
   const { th, t, settings, patchSettings, notifyDataChanged } = useApp();
   const { status: backupStatus, handleExport, handleImport, handleClear: clearAll } = useBackup(notifyDataChanged);
   const cloud = useCloudBackup(notifyDataChanged);
-  const [cloudPickerOpen, setCloudPickerOpen] = useState(false);
 
   const [showCurrPicker, setShowCurrPicker] = useState(false);
   const [showLangPicker, setShowLangPicker] = useState(false);
@@ -211,8 +210,8 @@ export default function SettingsScreen() {
   async function handleFeedback() {
     if (fbText.trim().length < 10) return;
     const subject = encodeURIComponent(`[${fbCat.toUpperCase()}] ${fbText.slice(0, 60)}`);
-    const body    = encodeURIComponent(`Category: ${fbCat}\n\n${fbText}\n\n---\nSent from Asset Manager (Expo)`);
-    await Linking.openURL(`mailto:hello@assetmanager.app?subject=${subject}&body=${body}`).catch(() => {});
+    const body    = encodeURIComponent(`Category: ${fbCat}\n\n${fbText}\n\n---\nSent from Vaultic (Expo)`);
+    await Linking.openURL(`mailto:hello@vaultic.app?subject=${subject}&body=${body}`).catch(() => {});
     setFbStatus('done');
   }
 
@@ -290,40 +289,22 @@ export default function SettingsScreen() {
               onPress={handleImport}
             />
           </Row>
-          {/* Cloud sign-in / sign-out row */}
-          {!isWeb && (
-            <Row
-              label={cloud.signedIn ? t('settings_cloud_signed_in') : t('settings_cloud_signin')}
-              sub={cloud.signedIn ? t('settings_cloud_google_drive') : t('settings_cloud_signed_out')}
-              th={th}
-            >
-              <SmallBtn
-                label={cloud.status === 'signing-in' ? '…' : cloud.signedIn ? t('settings_cloud_signout') : t('settings_cloud_signin')}
-                bg={cloud.signedIn ? th.redBg : th.bluBg}
-                color={cloud.signedIn ? th.redTx : th.bluTx}
-                onPress={() => { cloud.signedIn ? cloud.signOut() : cloud.signIn(); }}
-              />
-            </Row>
-          )}
           <Row
             label={t('settings_cloud_backup')}
             sub={isWeb
               ? t('settings_cloud_unavailable_web')
-              : !cloud.signedIn
-                ? t('settings_cloud_signin_required')
-                : Platform.OS === 'ios'
-                  ? t('settings_cloud_backup_sub_ios')
-                  : t('settings_cloud_backup_sub_android')}
+              : Platform.OS === 'ios'
+                ? t('settings_cloud_backup_sub_ios')
+                : t('settings_cloud_backup_sub_android')}
             th={th}
           >
             <SmallBtn
-              label={cloud.status === 'uploading' ? '…' : cloud.status === 'success' && !isWeb ? '✓' : t('settings_export_btn')}
+              label={cloud.status === 'uploading' ? '…' : cloud.status === 'success' ? '✓' : t('settings_export_btn')}
               bg={th.bluBg}
               color={th.bluTx}
               onPress={() => { if (!isWeb) cloud.backup(); }}
             />
           </Row>
-          {/* Cloud error feedback */}
           {cloud.lastError && (
             <Row label="" th={th}>
               <Pressable onPress={() => Alert.alert(t('settings_cloud_error_title'), cloud.lastError ?? '')}>
@@ -333,18 +314,14 @@ export default function SettingsScreen() {
           )}
           <Row
             label={t('settings_cloud_restore')}
-            sub={!cloud.signedIn ? t('settings_cloud_signed_out') : ''}
+            sub={''}
             th={th}
           >
             <SmallBtn
-              label={cloud.status === 'listing' || cloud.status === 'downloading' ? '…' : t('settings_import_btn')}
+              label={cloud.status === 'downloading' ? '…' : t('settings_import_btn')}
               bg={th.accBg}
               color={th.accTx}
-              onPress={async () => {
-                if (isWeb) return;
-                await cloud.refreshFiles();
-                setCloudPickerOpen(true);
-              }}
+              onPress={() => { if (!isWeb) cloud.restore(); }}
             />
           </Row>
           <Row label={t('settings_clear')} sub={t('settings_clear_sub')} last th={th}>
@@ -555,21 +532,6 @@ export default function SettingsScreen() {
         th={th}
       />
 
-      {/* Cloud restore picker */}
-      <PickerModal
-        visible={cloudPickerOpen}
-        onClose={() => setCloudPickerOpen(false)}
-        title={t('settings_cloud_restore')}
-        options={cloud.files.length > 0
-          ? cloud.files.map(f => ({ value: f.id, label: `${f.name}${f.modifiedAt ? ` · ${f.modifiedAt.slice(0,10)}` : ''}` }))
-          : [{ value: '__none', label: t('settings_cloud_signed_out') }]}
-        value=""
-        onChange={async v => {
-          if (v === '__none') return;
-          await cloud.restore(v);
-        }}
-        th={th}
-      />
     </SafeAreaView>
   );
 }

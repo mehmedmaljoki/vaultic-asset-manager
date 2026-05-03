@@ -1,7 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Share } from 'react-native';
+import { Platform } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { exportData, importData, clearAllData } from '../services/BackupService';
 
 export type BackupStatus = 'idle' | 'exporting' | 'importing' | 'clearing' | 'success' | 'error';
@@ -29,7 +31,16 @@ export function useBackup(onDataChanged?: () => Promise<void>): UseBackupResult 
     setStatus('exporting');
     try {
       const json = await exportData(db);
-      await Share.share({ title: 'Asset Manager Backup', message: json });
+      const ts   = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 16);
+      if (Platform.OS !== 'web') {
+        const path = `${FileSystem.cacheDirectory ?? ''}oam_backup_${ts}.json`;
+        await FileSystem.writeAsStringAsync(path, json, { encoding: FileSystem.EncodingType.UTF8 });
+        await Sharing.shareAsync(path, {
+          mimeType:    'application/json',
+          dialogTitle: 'Vaultic Backup',
+          UTI:         'public.json',
+        });
+      }
       setStatus('success');
     } catch {
       setStatus('error');
