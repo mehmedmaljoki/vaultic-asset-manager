@@ -25,6 +25,7 @@
     "expo-document-picker": "~14.0.8",
     "expo-font": "~14.0.11",
     "expo-linking": "~8.0.12",
+    "expo-localization": "~16.0.0",
     "expo-local-authentication": "~15.0.0",
     "expo-web-browser": "~14.0.0",
     "expo-router": "~6.0.23",

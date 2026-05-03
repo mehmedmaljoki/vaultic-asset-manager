@@ -10,6 +10,7 @@ import Svg, {
 } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useSQLiteContext } from 'expo-sqlite';
+import { useRouter } from 'expo-router';
 import { type Theme } from '@/lib/colors';
 import { useApp } from '@/lib/AppContext';
 import { useAssets } from '@/lib/hooks/useAssets';
@@ -691,22 +692,26 @@ function PieChart({ data, total, th }: { data: PieSlice[]; total: number; th: Th
 }
 
 // ── Summary card ──────────────────────────────────────────────────────────────
-function SummaryCard({ label, value, sub, color, th }: {
-  label: string; value: string; sub: string; color: string; th: Theme;
+function SummaryCard({ label, value, sub, color, th, onPress }: {
+  label: string; value: string; sub: string; color: string; th: Theme; onPress?: () => void;
 }) {
   return (
-    <View style={[styles.card, { backgroundColor: th.sur, ...th.shadow }]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.card, { backgroundColor: th.sur, ...th.shadow, opacity: onPress && pressed ? 0.75 : 1 }]}
+    >
       <Text style={[styles.cardLabel, { color: th.tx2 }]}>{label}</Text>
       <Text style={[styles.cardValue, { color }]}>{value}</Text>
       <Text style={[styles.cardSub, { color: th.tx3 }]}>{sub}</Text>
-    </View>
+    </Pressable>
   );
 }
 
 // ── Dashboard screen ──────────────────────────────────────────────────────────
 export default function DashboardScreen() {
   const { th, fmt, t, privacyMode, prices, priceSource, priceAgeMinutes, refreshPrices, fxRates } = useApp();
-  const db = useSQLiteContext();
+  const db     = useSQLiteContext();
+  const router = useRouter();
 
   const [showChart,     setShowChart]     = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -796,10 +801,10 @@ export default function DashboardScreen() {
 
         {/* ── 4 Summary cards ─────────────────────────────────── */}
         <View style={styles.cardsGrid}>
-          <SummaryCard label={t('dash_assets_label')} value={blur ?? fmt(totalWorth)} sub={`${assets.length} ${t('dash_items')}`} color={th.acc} th={th} />
-          <SummaryCard label={t('dash_net')}          value={blur ?? fmt(netWorth)}  sub={t('dash_total_net')}                   color={th.tx}  th={th} />
-          <SummaryCard label={t('dash_owed_to_me')}   value={blur ?? fmt(totOwed)}   sub={t('dash_receivable')}                  color={th.blu} th={th} />
-          <SummaryCard label={t('dash_i_owe')}        value={blur ?? fmt(totIowe)}   sub={t('dash_payable')}                     color={th.red} th={th} />
+          <SummaryCard label={t('dash_assets_label')} value={blur ?? fmt(totalWorth)} sub={`${assets.length} ${t('dash_items')}`} color={th.acc} th={th} onPress={() => router.push('/(tabs)/assets')} />
+          <SummaryCard label={t('dash_net')}          value={blur ?? fmt(netWorth)}  sub={t('dash_total_net')}                   color={th.tx}  th={th} onPress={() => router.push('/(tabs)/assets')} />
+          <SummaryCard label={t('dash_owed_to_me')}   value={blur ?? fmt(totOwed)}   sub={t('dash_receivable')}                  color={th.blu} th={th} onPress={() => router.push('/(tabs)/debts')} />
+          <SummaryCard label={t('dash_i_owe')}        value={blur ?? fmt(totIowe)}   sub={t('dash_payable')}                     color={th.red} th={th} onPress={() => router.push('/(tabs)/debts')} />
         </View>
 
         {/* ── Portfolio breakdown ──────────────────────────────── */}
