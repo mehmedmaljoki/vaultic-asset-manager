@@ -86,6 +86,12 @@ export async function applyMigrations(db: SQLiteDatabase): Promise<void> {
     await db.execAsync(`ALTER TABLE ${TABLES.ASSETS} ADD COLUMN purity REAL`);
   }
 
+  // Deduplicate history before adding the unique index (safe on first run — no-op if already clean).
+  await db.execAsync(
+    `DELETE FROM ${TABLES.HISTORY} WHERE rowid NOT IN (
+       SELECT MIN(rowid) FROM ${TABLES.HISTORY} GROUP BY date, total
+     )`
+  );
   // UNIQUE index on history(date,total) enables idempotent restore via INSERT OR IGNORE.
   await db.execAsync(
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_history_date_total ON ${TABLES.HISTORY}(date, total)`

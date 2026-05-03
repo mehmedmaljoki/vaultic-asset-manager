@@ -12,7 +12,14 @@ export interface DriveTokens {
 }
 
 function getWebBrowser() {
-  try { return require('expo-web-browser') as typeof import('expo-web-browser'); } catch { return null; }
+  try {
+    // Guard against dev builds that don't include the native module.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { NativeModules } = require('react-native') as typeof import('react-native');
+    if (!NativeModules.ExpoWebBrowser) return null;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('expo-web-browser') as typeof import('expo-web-browser');
+  } catch { return null; }
 }
 function getCrypto() {
   try { return require('expo-crypto') as typeof import('expo-crypto'); } catch { return null; }

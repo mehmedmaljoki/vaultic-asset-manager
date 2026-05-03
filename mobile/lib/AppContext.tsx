@@ -150,11 +150,13 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       fxSource:        fxResult.source,
       dataVersion, notifyDataChanged,
     }}>
-      {locked ? <LockScreen onUnlock={unlock} /> : children}
+      {locked ? <LockScreen onUnlock={unlock} th={th} t={t} /> : children}
       <LockOptInPrompt
         visible={showLockOptIn}
         onEnable={handleOptInEnable}
         onLater={handleOptInLater}
+        th={th}
+        t={t}
       />
     </Ctx.Provider>
   );

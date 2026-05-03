@@ -1,15 +1,16 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useApp } from '../AppContext';
+import type { Theme } from '../colors';
 
 export interface LockOptInPromptProps {
   visible: boolean;
   onEnable: () => void;
   onLater: () => void;
+  th: Theme;
+  t: (key: string) => string;
 }
 
-export function LockOptInPrompt({ visible, onEnable, onLater }: LockOptInPromptProps) {
-  const { th, t } = useApp();
+export function LockOptInPrompt({ visible, onEnable, onLater, th, t }: LockOptInPromptProps) {
   if (!visible) return null;
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onLater}>

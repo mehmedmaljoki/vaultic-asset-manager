@@ -75,7 +75,7 @@ function MigrationRunner({ children }: { children: React.ReactNode }) {
             const history: HistoryPoint[] = JSON.parse(rawHistory);
             for (const h of history) {
               await db.runAsync(
-                `INSERT INTO ${TABLES.HISTORY} (date, total) VALUES (?,?)`,
+                `INSERT OR IGNORE INTO ${TABLES.HISTORY} (date, total) VALUES (?,?)`,
                 [h.date, h.total]
               );
             }

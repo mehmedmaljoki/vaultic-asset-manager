@@ -2,15 +2,15 @@ import { useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useApp } from '../AppContext';
+import type { Theme } from '../colors';
 
 export interface LockScreenProps {
   onUnlock: (reason: string) => Promise<boolean>;
+  th: Theme;
+  t: (key: string) => string;
 }
 
-export function LockScreen({ onUnlock }: LockScreenProps) {
-  const { th, t } = useApp();
-
+export function LockScreen({ onUnlock, th, t }: LockScreenProps) {
   // Auto-prompt once on mount so the OS sheet appears without a tap.
   useEffect(() => {
     onUnlock(t('lock_unlock_reason')).catch(() => { /* user can retry via button */ });
