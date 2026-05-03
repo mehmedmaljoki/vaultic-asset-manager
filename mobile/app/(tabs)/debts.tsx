@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, FlatList, Pressable, TextInput,
   Modal, Animated, StyleSheet, useWindowDimensions,
@@ -22,7 +22,7 @@ function BottomSheet({
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { th } = useApp();
-  const slideAnim = useState(() => new Animated.Value(0))[0];
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(slideAnim, {
@@ -403,7 +403,7 @@ export default function DebtsScreen() {
           onPress={() => setShowAdd(true)}
           style={({ pressed }) => [s.addBtn, { backgroundColor: pressed ? th.acc + 'cc' : th.acc }]}
         >
-          <Text style={s.addBtnText}>+ Add</Text>
+          <Text style={s.addBtnText}>{t('debt_add')}</Text>
         </Pressable>
       </View>
 

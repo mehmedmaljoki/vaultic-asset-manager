@@ -8,6 +8,11 @@ import { LIGHT, DARK, type Theme } from './colors';
 import { formatCurrency } from './utils/currency';
 import { t as translate, LANGS, type LangCode } from './i18n';
 import { dbGetSettings, dbSaveSettings } from './repositories/SettingsRepository';
+import { applySystemDefaultsIfFirstLaunch } from './services/SystemDefaultsService';
+import { getLockAvailability } from './services/LockService';
+import { useAppLock } from './hooks/useAppLock';
+import { LockScreen } from './components/LockScreen';
+import { LockOptInPrompt } from './components/LockOptInPrompt';
 import { SETTINGS_DEFAULTS, type Settings } from './models/Settings';
 import { usePrices, type UsePricesResult } from './hooks/usePrices';
 import { useFxRates } from './hooks/useFxRates';
@@ -58,9 +63,29 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(SETTINGS_DEFAULTS);
   const [loaded, setLoaded]     = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
+  const [showLockOptIn, setShowLockOptIn] = useState(false);
 
   useEffect(() => {
-    dbGetSettings(db).then(s => { setSettings(s); setLoaded(true); });
+    (async () => {
+      await applySystemDefaultsIfFirstLaunch(db);
+      const s = await dbGetSettings(db);
+      setSettings(s);
+      setLoaded(true);
+      if (!s.lockOptInPromptShown && !s.lockEnabled) {
+        try {
+          const avail = await getLockAvailability();
+          if (avail.available) {
+            setShowLockOptIn(true);
+          } else if (avail.reason !== 'no_module') {
+            // Hardware confirmed absent → dismiss permanently so we don't ask again.
+            // If reason is 'no_module' we leave the flag unset so the prompt
+            // appears after a proper native rebuild with expo-local-authentication.
+            await dbSaveSettings(db, { lockOptInPromptShown: true });
+            setSettings(prev => ({ ...prev, lockOptInPromptShown: true }));
+          }
+        } catch { /* swallow — opt-in is best-effort */ }
+      }
+    })();
   }, [db]);
 
   const patchSettings = useCallback(async (patch: Partial<Settings>) => {
@@ -77,6 +102,21 @@ function AppProviderInner({ children }: { children: ReactNode }) {
 
   const priceResult: UsePricesResult = usePrices(settings, dataVersion);
   const fxResult = useFxRates(settings, dataVersion);
+  const { locked, unlock } = useAppLock(settings.lockEnabled);
+
+  const handleOptInEnable = useCallback(async () => {
+    setShowLockOptIn(false);
+    const ok = await unlock(translate('lock_unlock_reason', (settings.language as LangCode) ?? 'en'));
+    const patch: Partial<Settings> = ok
+      ? { lockEnabled: true, lockOptInPromptShown: true }
+      : { lockOptInPromptShown: true };
+    await patchSettings(patch);
+  }, [unlock, settings.language, patchSettings]);
+
+  const handleOptInLater = useCallback(async () => {
+    setShowLockOptIn(false);
+    await patchSettings({ lockOptInPromptShown: true });
+  }, [patchSettings]);
 
   const isDark =
     settings.themeMode === 'dark' ||
@@ -110,7 +150,12 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       fxSource:        fxResult.source,
       dataVersion, notifyDataChanged,
     }}>
-      {children}
+      {locked ? <LockScreen onUnlock={unlock} /> : children}
+      <LockOptInPrompt
+        visible={showLockOptIn}
+        onEnable={handleOptInEnable}
+        onLater={handleOptInLater}
+      />
     </Ctx.Provider>
   );
 }

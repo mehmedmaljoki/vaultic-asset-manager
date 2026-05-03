@@ -7,10 +7,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { type Theme } from '@/lib/colors';
 import { useApp } from '@/lib/AppContext';
 import { useAssets } from '@/lib/hooks/useAssets';
+import { useDebts } from '@/lib/hooks/useDebts';
 import { useZakat } from '@/lib/hooks/useZakat';
 import { CATEGORIES } from '@/lib/models/Category';
 import { NISAB_SILVER_G, NISAB_GOLD_G } from '@/lib/models/PriceMap';
-import type { Asset } from '@/lib/models/Asset';
+import { QURAN_2_261_AR } from '@/lib/models/Quran';
+import { tFormat, type LangCode } from '@/lib/i18n';
+import { formatDate, formatDateRange } from '@/lib/utils/dates';
+import type { ZakatCategoryId } from '@/lib/services/ZakatService';
 
 // ── Zakat rules per category ──────────────────────────────────────────────────
 const RULES: Record<string, { zakatable: boolean; noteKey: string }> = {
@@ -21,6 +25,7 @@ const RULES: Record<string, { zakatable: boolean; noteKey: string }> = {
   real_estate:  { zakatable: false, noteKey: 'zakat_rule_personal' },
   vehicle:      { zakatable: false, noteKey: 'zakat_rule_personal' },
   collectibles: { zakatable: false, noteKey: 'zakat_rule_trade_only' },
+  receivables:  { zakatable: false, noteKey: 'zakat_rule_receivable' },
 };
 
 // ── Toggle switch ─────────────────────────────────────────────────────────────
@@ -74,16 +79,21 @@ function InfoSheet({ visible, onClose, th }: { visible: boolean; onClose: () => 
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function ZakatScreen() {
-  const { th, fmt, t, privacyMode, prices, fxRates } = useApp();
+  const { th, fmt, t, language, privacyMode, prices, fxRates } = useApp();
   const blur = privacyMode ? '••••' : null;
 
   const { assets } = useAssets(prices, fxRates);
+  const { debts }  = useDebts();
   const [nisabType, setNisabType] = useState<'silver' | 'gold'>('silver');
-  const [overrides, setOverrides] = useState<Partial<Record<Asset['type'], boolean>>>({});
+  const [overrides, setOverrides] = useState<Partial<Record<ZakatCategoryId, boolean>>>({});
   const [showInfo, setShowInfo] = useState(false);
+  const [ayatExpanded, setAyatExpanded] = useState(false);
 
-  const zakatResult = useZakat(assets, prices, nisabType, overrides, fxRates);
-  const { nisabValue, totalWorth, zakatableTotal, zakatDue, aboveNisab, breakdown } = zakatResult;
+  const zakatResult = useZakat(assets, prices, nisabType, overrides, fxRates, debts);
+  const {
+    nisabValue, totalWorth, zakatableTotal, zakatDue, aboveNisab, breakdown,
+    pendingTotal, hawlAsOf, hawlEarliestUsed, usedCreatedAtCount, lineItems,
+  } = zakatResult;
 
   const nisabValues = {
     silver: prices.silver != null ? NISAB_SILVER_G * prices.silver : null,
@@ -92,22 +102,36 @@ export default function ZakatScreen() {
   const nisabEur = nisabValues[nisabType];
 
   const grouped = breakdown
-    .filter(b => b.total != null && b.total > 0)
+    .filter(b => (b.total != null && b.total > 0) || b.hawlTotal > 0)
     .map(b => {
-      const cat = CATEGORIES.find(c => c.id === b.categoryId)!;
+      const cat = CATEGORIES.find(c => c.id === b.categoryId);
+      const isReceivables = b.categoryId === 'receivables';
       return {
-        ...cat,
-        name:        t(cat.nameKey),
-        catAssets:   assets.filter(a => a.type === b.categoryId),
-        total:       b.total ?? 0,
+        id:          b.categoryId,
+        nameKey:     cat?.nameKey ?? 'cat_receivables',
+        name:        t(cat?.nameKey ?? 'cat_receivables'),
+        color:       cat?.color ?? '#3a8a8a',
+        catAssets:   isReceivables ? [] : assets.filter(a => a.type === b.categoryId),
+        countLabel:  isReceivables
+          ? `${b.hawlMet} ${t('cat_receivables').toLowerCase()}`
+          : `${assets.filter(a => a.type === b.categoryId).length} ${t('dash_items')}`,
+        total:       b.total,
         rule:        RULES[b.categoryId] ?? { zakatable: false, noteKey: '' },
         isZakatable: b.isZakatable,
+        hawlMet:     b.hawlMet,
+        hawlTotal:   b.hawlTotal,
       };
     });
 
-  function toggleOverride(id: string, current: boolean) {
-    setOverrides(prev => ({ ...prev, [id as Asset['type']]: !current }));
+  function toggleOverride(id: ZakatCategoryId, current: boolean) {
+    setOverrides(prev => ({ ...prev, [id]: !current }));
   }
+
+  const lang = language as LangCode;
+  const rangeText = formatDateRange(hawlEarliestUsed, hawlAsOf, lang);
+  const summaryTitle = rangeText
+    ? `${t('zakat_summary')} · ${rangeText}`
+    : t('zakat_summary');
 
   const summaryRows = [
     { label: t('zakat_total_assets'),     val: blur ?? fmt(totalWorth),                              hi: false },
@@ -116,6 +140,17 @@ export default function ZakatScreen() {
     { label: t('zakat_rate'),             val: '2.5%',                                               hi: false },
     { label: t('zakat_due_label'),        val: blur ?? fmt(zakatDue),                                hi: true  },
   ];
+
+  const pendingCount = breakdown.reduce((n, b) => n + (b.hawlTotal - b.hawlMet), 0);
+
+  // Explain why zakat is 0 when not above nisab
+  const zeroReason: string | null = aboveNisab ? null : (() => {
+    if (assets.length === 0) return t('zakat_0_no_assets');
+    if (nisabValue == null)  return t('zakat_0_no_prices');
+    if (zakatableTotal === 0 && pendingTotal > 0) return t('zakat_0_hawl');
+    if (zakatableTotal === 0) return t('zakat_0_no_zakatable');
+    return null; // below nisab, subtitle already says it
+  })();
 
   return (
     <SafeAreaView style={[s.root, { backgroundColor: th.bg }]} edges={['top']}>
@@ -166,7 +201,10 @@ export default function ZakatScreen() {
         </View>
 
         {/* ── Result card ────────────────────────────────────────── */}
-        <View style={[s.resultCard, { backgroundColor: aboveNisab ? th.acc : th.tx3, ...th.shadow2 }]}>
+        <Pressable
+          style={[s.resultCard, { backgroundColor: aboveNisab ? th.acc : th.tx3, ...th.shadow2 }]}
+          onPress={() => setAyatExpanded(p => !p)}
+        >
           <Text style={s.resultLabel}>
             {aboveNisab ? t('zakat_due_caps') : t('zakat_below_nisab_caps')}
           </Text>
@@ -177,12 +215,48 @@ export default function ZakatScreen() {
                 ? `${t('zakat_2_5_of')} ${fmt(zakatableTotal)} ${t('zakat_zakatable')}`
                 : `${fmt(zakatableTotal)} ${t('zakat_below_note')} ${nisabEur != null ? fmt(nisabEur) : '–'}`}
           </Text>
+          {!aboveNisab && zeroReason && (
+            <View style={s.hawlBadge}>
+              <Text style={s.hawlText}>{zeroReason}</Text>
+            </View>
+          )}
           {aboveNisab && (
             <View style={s.hawlBadge}>
               <Text style={s.hawlText}>{t('zakat_hawl_warning')}</Text>
             </View>
           )}
-        </View>
+          {(pendingTotal > 0 || pendingCount > 0) && hawlEarliestUsed != null && !privacyMode && (
+            <View style={s.hawlBadge}>
+              <Text style={s.hawlText}>
+                {tFormat('zakat_hawl_explain', {
+                  asOf: formatDate(hawlEarliestUsed, lang),
+                  pending: fmt(pendingTotal),
+                  pendingCount,
+                }, lang)}
+              </Text>
+            </View>
+          )}
+          {usedCreatedAtCount > 0 && (
+            <View style={s.hawlBadge}>
+              <Text style={s.hawlText}>
+                {tFormat('zakat_hawl_createdat_warning', { count: usedCreatedAtCount }, lang)}
+              </Text>
+            </View>
+          )}
+
+          {/* Quran 2:261 — collapsed by default, tap card to expand */}
+          <View style={s.ayatToggle}>
+            <Text style={s.ayatToggleText}>
+              {ayatExpanded ? '▲' : '▼'} {t('quran_2_261_source')}
+            </Text>
+          </View>
+          {ayatExpanded && (
+            <View style={s.quranBlock}>
+              <Text style={s.quranAr}>{QURAN_2_261_AR}</Text>
+              <Text style={s.quranTr}>{t('quran_2_261_translation')}</Text>
+            </View>
+          )}
+        </Pressable>
 
         {/* ── Category breakdown ─────────────────────────────────── */}
         <View style={[s.card, { backgroundColor: th.sur, ...th.shadow }]}>
@@ -201,14 +275,17 @@ export default function ZakatScreen() {
                   <Text style={[s.categoryName, { color: th.tx }]}>{g.name}</Text>
                 </View>
                 <View style={s.categoryRight}>
-                  <Text style={[s.categoryTotal, { color: th.tx }]}>{blur ?? fmt(g.total)}</Text>
+                  <Text style={[s.categoryTotal, { color: th.tx }]}>{g.total != null ? (blur ?? fmt(g.total)) : '–'}</Text>
                   <Toggle value={g.isZakatable} onChange={() => toggleOverride(g.id, g.isZakatable)} th={th} />
                 </View>
               </View>
               <View style={s.categoryNote}>
                 <Text style={[s.categoryNoteText, { color: th.tx3 }]}>
-                  {g.rule.noteKey ? t(g.rule.noteKey) : ''} · {g.catAssets.length} {t('dash_items')}
-                  {g.isZakatable && g.total > 0 && (
+                  {g.rule.noteKey ? t(g.rule.noteKey) : ''} · {g.countLabel}
+                  {g.hawlTotal > 0 && (
+                    <Text> · {g.hawlMet}/{g.hawlTotal} {t('zakat_hawl_short')}</Text>
+                  )}
+                  {g.isZakatable && g.total != null && g.total > 0 && (
                     <Text style={{ color: th.accTx, fontFamily: 'DMSans_700Bold' }}>
                       {'  →  '}{blur ?? fmt(g.total * 0.025)}
                     </Text>
@@ -222,15 +299,54 @@ export default function ZakatScreen() {
         {/* ── Summary table (only if above nisab) ────────────────── */}
         {aboveNisab && (
           <View style={[s.card, { backgroundColor: th.sur, ...th.shadow }]}>
-            <Text style={[s.sectionTitle, { color: th.tx }]}>{t('zakat_summary')}</Text>
+            <Text style={[s.sectionTitle, { color: th.tx }]}>{summaryTitle}</Text>
             {summaryRows.map(row => (
               <View key={row.label} style={[s.summaryRow, { borderBottomColor: th.bdr }]}>
                 <Text style={[s.summaryLabel, { color: th.tx2 }]}>{row.label}</Text>
-                <Text style={[s.summaryVal, { color: row.hi ? th.accTx : th.tx, fontFamily: row.hi ? 'DMSans_700Bold' : 'DMSans_700Bold' }]}>
+                <Text style={[s.summaryVal, { color: row.hi ? th.accTx : th.tx, fontFamily: 'DMSans_700Bold' }]}>
                   {row.val}
                 </Text>
               </View>
             ))}
+          </View>
+        )}
+
+        {/* ── Receipt: every asset that contributed to the zakat amount ── */}
+        {aboveNisab && lineItems.length > 0 && (
+          <View style={[s.card, { backgroundColor: th.sur, ...th.shadow }]}>
+            <Text style={[s.sectionTitle, { color: th.tx }]}>{t('zakat_receipt_title')}</Text>
+            <Text style={[s.receiptCount, { color: th.tx3 }]}>
+              {tFormat('zakat_receipt_count', { count: lineItems.length }, lang)}
+            </Text>
+            {lineItems.map((item, i) => {
+              const cat = CATEGORIES.find(c => c.id === item.categoryId);
+              return (
+                <View
+                  key={item.assetId}
+                  style={[s.receiptRow, { borderBottomColor: th.bdr, borderBottomWidth: i < lineItems.length - 1 ? 0.5 : 0 }]}
+                >
+                  <View style={s.receiptLeft}>
+                    <View style={[s.dot, { backgroundColor: cat?.color ?? '#888' }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.receiptName, { color: th.tx }]} numberOfLines={1}>
+                        {item.categoryId === 'receivables' ? t('cat_receivables') : item.assetName}
+                      </Text>
+                      <Text style={[s.receiptSub, { color: th.tx3 }]}>
+                        {formatDate(item.acquiredAt, lang)}{item.usedCreatedAtFallback ? ' ⚠' : ''}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={s.receiptRight}>
+                    <Text style={[s.receiptVal, { color: th.tx }]}>{blur ?? fmt(item.value)}</Text>
+                    <Text style={[s.receiptZakat, { color: th.accTx }]}>+{blur ?? fmt(item.zakatAmount)}</Text>
+                  </View>
+                </View>
+              );
+            })}
+            <View style={[s.receiptTotal, { borderTopColor: th.bdr }]}>
+              <Text style={[s.receiptTotalLabel, { color: th.tx2 }]}>{t('zakat_receipt_subtotal')}</Text>
+              <Text style={[s.receiptTotalVal, { color: th.accTx }]}>{blur ?? fmt(zakatDue)}</Text>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -271,6 +387,13 @@ const s = StyleSheet.create({
   hawlBadge:    { marginTop: 12, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10, padding: 10 },
   hawlText:     { fontSize: 12, fontFamily: 'DMSans_400Regular', color: 'rgba(255,255,255,0.9)' },
 
+  // Quran block (inside result card)
+  ayatToggle:     { marginTop: 12, alignItems: 'center' },
+  ayatToggleText: { fontSize: 11, color: 'rgba(255,255,255,0.65)', fontFamily: 'DMSans_700Bold', letterSpacing: 0.4 },
+  quranBlock:   { marginTop: 10, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.3)' },
+  quranAr:      { fontSize: 16, lineHeight: 28, color: '#fff', textAlign: 'right', fontFamily: 'DMSans_400Regular', writingDirection: 'rtl' },
+  quranTr:      { fontSize: 12, lineHeight: 18, color: 'rgba(255,255,255,0.9)', fontFamily: 'DMSans_400Regular', marginTop: 8, fontStyle: 'italic' },
+
   // Categories
   sectionTitle:     { fontSize: 13, fontFamily: 'DMSans_700Bold', letterSpacing: -0.2, marginBottom: 12 },
   categoryRow:      { paddingVertical: 12 },
@@ -292,6 +415,19 @@ const s = StyleSheet.create({
   summaryRow:   { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 9, borderBottomWidth: 0.5 },
   summaryLabel: { fontSize: 13, fontFamily: 'DMSans_400Regular' },
   summaryVal:   { fontSize: 13 },
+
+  // Receipt
+  receiptCount:      { fontSize: 11, fontFamily: 'DMSans_400Regular', marginBottom: 10, marginTop: -6 },
+  receiptRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
+  receiptLeft:       { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 12 },
+  receiptRight:      { alignItems: 'flex-end' },
+  receiptName:       { fontSize: 13, fontFamily: 'DMSans_700Bold' },
+  receiptSub:        { fontSize: 11, fontFamily: 'DMSans_400Regular', marginTop: 1 },
+  receiptVal:        { fontSize: 13, fontFamily: 'DMSans_700Bold' },
+  receiptZakat:      { fontSize: 11, fontFamily: 'DMSans_700Bold', marginTop: 1 },
+  receiptTotal:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTopWidth: 0.5, marginTop: 4 },
+  receiptTotalLabel: { fontSize: 12, fontFamily: 'DMSans_400Regular' },
+  receiptTotalVal:   { fontSize: 14, fontFamily: 'DMSans_700Bold' },
 
   // Info sheet
   overlay:     { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },

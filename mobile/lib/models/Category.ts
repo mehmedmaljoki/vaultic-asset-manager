@@ -16,4 +16,5 @@ export const CATEGORIES: Category[] = [
   { id: 'crypto',       name: 'Crypto',       nameKey: 'cat_crypto',       icon: 'logo-bitcoin',     color: '#d85020' },
   { id: 'jewelry',      name: 'Jewelry',      nameKey: 'cat_jewelry',      icon: 'sparkles-outline', color: '#b830a0' },
   { id: 'collectibles', name: 'Collectibles', nameKey: 'cat_collectibles', icon: 'star-outline',     color: '#a06030' },
+  { id: 'receivables',  name: 'Receivables',  nameKey: 'cat_receivables',  icon: 'cash-outline',     color: '#3a8a8a' },
 ];

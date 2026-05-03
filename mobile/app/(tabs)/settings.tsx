@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import {
   View, Text, ScrollView, Pressable, TextInput, Modal,
   StyleSheet, Linking, Alert,
@@ -9,7 +10,15 @@ import { type Theme } from '@/lib/colors';
 import { useApp } from '@/lib/AppContext';
 import { LANGS } from '@/lib/i18n';
 import { useBackup } from '@/lib/hooks/useBackup';
+import { useCloudBackup } from '@/lib/hooks/useCloudBackup';
 import { CURRENCIES } from '@/lib/models/Currency';
+import {
+  authenticate as lockAuthenticate,
+  getLockAvailability,
+  getSupportedTypes,
+  type AuthType,
+  type LockUnavailableReason,
+} from '@/lib/services/LockService';
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const TECH_STACK = [
@@ -130,6 +139,8 @@ function PickerModal({
 export default function SettingsScreen() {
   const { th, t, settings, patchSettings, notifyDataChanged } = useApp();
   const { status: backupStatus, handleExport, handleImport, handleClear: clearAll } = useBackup(notifyDataChanged);
+  const cloud = useCloudBackup(notifyDataChanged);
+  const [cloudPickerOpen, setCloudPickerOpen] = useState(false);
 
   const [showCurrPicker, setShowCurrPicker] = useState(false);
   const [showLangPicker, setShowLangPicker] = useState(false);
@@ -140,6 +151,42 @@ export default function SettingsScreen() {
   const [fbCat,    setFbCat]    = useState('feature');
   const [fbText,   setFbText]   = useState('');
   const [fbStatus, setFbStatus] = useState<'idle'|'done'>('idle');
+
+  // Security
+  const [lockHwAvailable,  setLockHwAvailable]  = useState(false);
+  const [lockUnavailReason, setLockUnavailReason] = useState<LockUnavailableReason | undefined>(undefined);
+  const [lockTypes,         setLockTypes]         = useState<AuthType[]>([]);
+  const isWeb = Platform.OS === 'web';
+
+  useEffect(() => {
+    (async () => {
+      const avail = await getLockAvailability();
+      setLockHwAvailable(avail.available);
+      setLockUnavailReason(avail.reason);
+      setLockTypes(await getSupportedTypes());
+    })();
+  }, []);
+
+  async function handleLockToggle(next: boolean) {
+    if (!next) { await patchSettings({ lockEnabled: false }); return; }
+    const ok = await lockAuthenticate(t('lock_unlock_reason'));
+    if (ok) {
+      await patchSettings({ lockEnabled: true });
+    } else {
+      Alert.alert(t('settings_lock_enable'), t('settings_lock_auth_failed'));
+    }
+  }
+
+  function lockMethodLabel(): string {
+    const labels = lockTypes.map(t2 =>
+      t2 === 'face'        ? t('settings_lock_method_face')
+      : t2 === 'fingerprint'
+        ? (Platform.OS === 'ios' ? t('settings_lock_method_touch') : t('settings_lock_method_fingerprint'))
+        : t2 === 'iris'    ? t('settings_lock_method_fingerprint')
+        : ''
+    ).filter(Boolean);
+    return labels.length ? labels.join(' · ') : t('settings_lock_enable_sub');
+  }
 
   function patch<K extends keyof typeof settings>(key: K, value: typeof settings[K]) {
     patchSettings({ [key]: value } as Partial<typeof settings>);
@@ -169,9 +216,8 @@ export default function SettingsScreen() {
     setFbStatus('done');
   }
 
-  const currLabel = CURRENCIES.find(c => c.code === settings.currency)
-    ? `${CURRENCIES.find(c => c.code === settings.currency)!.symbol} ${settings.currency}`
-    : settings.currency;
+  const currObj   = CURRENCIES.find(c => c.code === settings.currency);
+  const currLabel = currObj ? `${currObj.symbol} ${settings.currency}` : settings.currency;
 
   return (
     <SafeAreaView style={[s.root, { backgroundColor: th.bg }]} edges={['top']}>
@@ -244,12 +290,108 @@ export default function SettingsScreen() {
               onPress={handleImport}
             />
           </Row>
+          {/* Cloud sign-in / sign-out row */}
+          {!isWeb && (
+            <Row
+              label={cloud.signedIn ? t('settings_cloud_signed_in') : t('settings_cloud_signin')}
+              sub={cloud.signedIn ? t('settings_cloud_google_drive') : t('settings_cloud_signed_out')}
+              th={th}
+            >
+              <SmallBtn
+                label={cloud.status === 'signing-in' ? '…' : cloud.signedIn ? t('settings_cloud_signout') : t('settings_cloud_signin')}
+                bg={cloud.signedIn ? th.redBg : th.bluBg}
+                color={cloud.signedIn ? th.redTx : th.bluTx}
+                onPress={() => { cloud.signedIn ? cloud.signOut() : cloud.signIn(); }}
+              />
+            </Row>
+          )}
+          <Row
+            label={t('settings_cloud_backup')}
+            sub={isWeb
+              ? t('settings_cloud_unavailable_web')
+              : !cloud.signedIn
+                ? t('settings_cloud_signin_required')
+                : Platform.OS === 'ios'
+                  ? t('settings_cloud_backup_sub_ios')
+                  : t('settings_cloud_backup_sub_android')}
+            th={th}
+          >
+            <SmallBtn
+              label={cloud.status === 'uploading' ? '…' : cloud.status === 'success' && !isWeb ? '✓' : t('settings_export_btn')}
+              bg={th.bluBg}
+              color={th.bluTx}
+              onPress={() => { if (!isWeb) cloud.backup(); }}
+            />
+          </Row>
+          {/* Cloud error feedback */}
+          {cloud.lastError && (
+            <Row label="" th={th}>
+              <Pressable onPress={() => Alert.alert(t('settings_cloud_error_title'), cloud.lastError ?? '')}>
+                <Text style={[s.cloudErrText, { color: th.redTx }]}>{t('settings_cloud_error_hint')}</Text>
+              </Pressable>
+            </Row>
+          )}
+          <Row
+            label={t('settings_cloud_restore')}
+            sub={!cloud.signedIn ? t('settings_cloud_signed_out') : ''}
+            th={th}
+          >
+            <SmallBtn
+              label={cloud.status === 'listing' || cloud.status === 'downloading' ? '…' : t('settings_import_btn')}
+              bg={th.accBg}
+              color={th.accTx}
+              onPress={async () => {
+                if (isWeb) return;
+                await cloud.refreshFiles();
+                setCloudPickerOpen(true);
+              }}
+            />
+          </Row>
           <Row label={t('settings_clear')} sub={t('settings_clear_sub')} last th={th}>
             <SmallBtn
               label={confirmClear ? t('settings_clear_confirm') : t('settings_clear_btn')}
               bg={confirmClear ? th.red : th.redBg}
               color={confirmClear ? '#fff' : th.redTx}
               onPress={handleClear}
+            />
+          </Row>
+        </Section>
+
+        {/* ── Security ───────────────────────────────────────────── */}
+        <Section title={t('settings_security')} th={th}>
+          <Row
+            label={t('settings_lock_enable')}
+            sub={isWeb
+              ? t('settings_cloud_unavailable_web')
+              : !lockHwAvailable
+                ? (lockUnavailReason === 'no_module'
+                    ? t('lock_unavailable_no_module')
+                    : lockUnavailReason === 'not_enrolled'
+                      ? t('lock_unavailable_not_enrolled')
+                      : t('settings_lock_unavailable'))
+                : lockMethodLabel()}
+            last
+            th={th}
+          >
+            <Toggle
+              value={settings.lockEnabled}
+              onChange={v => {
+                if (isWeb || !lockHwAvailable) {
+                  Alert.alert(
+                    t('settings_lock_enable'),
+                    isWeb
+                      ? t('settings_cloud_unavailable_web')
+                      : lockUnavailReason === 'no_module'
+                        ? t('lock_unavailable_no_module')
+                        : lockUnavailReason === 'not_enrolled'
+                          ? t('lock_unavailable_not_enrolled')
+                          : t('settings_lock_unavailable'),
+                  );
+                  return;
+                }
+                handleLockToggle(v);
+              }}
+              th={th}
             />
           </Row>
         </Section>
@@ -347,7 +489,7 @@ export default function SettingsScreen() {
                 numberOfLines={4}
                 textAlignVertical="top"
               />
-              <Text style={[s.fbCharCount, { color: th.tx3 }]}>{fbText.length} chars</Text>
+              <Text style={[s.fbCharCount, { color: th.tx3 }]}>{fbText.length} {t('settings_feedback_chars')}</Text>
 
               {/* Submit */}
               <Pressable
@@ -412,6 +554,22 @@ export default function SettingsScreen() {
         onChange={v => patch('language', v)}
         th={th}
       />
+
+      {/* Cloud restore picker */}
+      <PickerModal
+        visible={cloudPickerOpen}
+        onClose={() => setCloudPickerOpen(false)}
+        title={t('settings_cloud_restore')}
+        options={cloud.files.length > 0
+          ? cloud.files.map(f => ({ value: f.id, label: `${f.name}${f.modifiedAt ? ` · ${f.modifiedAt.slice(0,10)}` : ''}` }))
+          : [{ value: '__none', label: t('settings_cloud_signed_out') }]}
+        value=""
+        onChange={async v => {
+          if (v === '__none') return;
+          await cloud.restore(v);
+        }}
+        th={th}
+      />
     </SafeAreaView>
   );
 }
@@ -447,6 +605,9 @@ const s = StyleSheet.create({
   // Small button
   smallBtn:     { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7 },
   smallBtnText: { fontSize: 12, fontFamily: 'DMSans_700Bold' },
+
+  // Cloud error
+  cloudErrText: { fontSize: 11, fontFamily: 'DMSans_700Bold', textDecorationLine: 'underline' },
 
   // Currency trigger
   pickerTrigger:     { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1 },

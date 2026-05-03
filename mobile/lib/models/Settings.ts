@@ -5,6 +5,16 @@ export interface Settings {
   apiProvider: 'goldapi';
   apiKey: string;
   language: string;
+  /** Set after the first-launch system-default sync. */
+  firstLaunchDone: boolean;
+  /** True once the optional biometric lock prompt has been shown (regardless of choice). */
+  lockOptInPromptShown: boolean;
+  /** Whether the app should require biometric/device-lock unlock on launch & resume. */
+  lockEnabled: boolean;
+  /** Google Drive OAuth tokens for cloud backup. */
+  gdriveAccessToken: string;
+  gdriveRefreshToken: string;
+  gdriveExpiresAt: number;
 }
 
 export const SETTINGS_DEFAULTS: Settings = {
@@ -14,4 +24,10 @@ export const SETTINGS_DEFAULTS: Settings = {
   apiProvider: 'goldapi',
   apiKey:      '',
   language:    'en',
+  firstLaunchDone:      false,
+  lockOptInPromptShown: false,
+  lockEnabled:          false,
+  gdriveAccessToken:    '',
+  gdriveRefreshToken:   '',
+  gdriveExpiresAt:      0,
 };

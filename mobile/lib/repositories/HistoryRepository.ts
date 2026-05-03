@@ -40,7 +40,7 @@ export async function dbInsertHistoryBatch(
   await db.withTransactionAsync(async () => {
     for (const p of points) {
       await db.runAsync(
-        `INSERT INTO ${TABLES.HISTORY} (date, total) VALUES (?,?)`,
+        `INSERT OR IGNORE INTO ${TABLES.HISTORY} (date, total) VALUES (?,?)`,
         [p.date, p.total]
       );
     }

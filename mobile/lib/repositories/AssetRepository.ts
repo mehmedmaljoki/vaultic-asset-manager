@@ -77,3 +77,26 @@ export async function dbUpdateAsset(
 export async function dbDeleteAsset(db: SQLiteDatabase, id: string): Promise<void> {
   await db.runAsync(`DELETE FROM ${TABLES.ASSETS} WHERE id=?`, [id]);
 }
+
+export async function dbUpsertAsset(db: SQLiteDatabase, asset: Asset): Promise<void> {
+  await db.runAsync(
+    `INSERT INTO ${TABLES.ASSETS}
+     (id, type, subtype, name, quantity, unit, value, currency, purity, purchased_at, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+     ON CONFLICT(id) DO UPDATE SET
+       type=excluded.type,
+       subtype=excluded.subtype,
+       name=excluded.name,
+       quantity=excluded.quantity,
+       unit=excluded.unit,
+       value=excluded.value,
+       currency=excluded.currency,
+       purity=excluded.purity,
+       purchased_at=excluded.purchased_at,
+       updated_at=excluded.updated_at`,
+    [asset.id, asset.type, asset.subtype ?? null, asset.name,
+     asset.quantity ?? null, asset.unit ?? null, asset.value ?? null,
+     asset.currency ?? null, asset.purity ?? null,
+     asset.purchasedAt ?? null, asset.createdAt, asset.updatedAt ?? null]
+  );
+}

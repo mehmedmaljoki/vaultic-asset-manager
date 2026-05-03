@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import { fetchPrices, oldestPriceAgeMinutes, type PriceFetchResult } from '../services/PriceService';
@@ -16,10 +16,12 @@ export interface UsePricesResult {
 export function usePrices(settings: Settings, dataVersion = 0): UsePricesResult {
   const db = useSQLiteContext();
   const [result, setResult] = useState<PriceFetchResult | null>(null);
-  const [loading, setLoading]  = useState(false);
+  const [loading, setLoading] = useState(false);
+  const loadingRef = useRef(false);
 
   const load = useCallback(async () => {
-    if (loading) return;
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
     try {
       const r = await fetchPrices(db, settings.currency, settings.apiProvider);
@@ -27,16 +29,17 @@ export function usePrices(settings: Settings, dataVersion = 0): UsePricesResult 
     } catch {
       // keep previous result
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
-  }, [db, settings.currency, settings.apiProvider, loading]);
+  }, [db, settings.currency, settings.apiProvider]);
 
   useEffect(() => {
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.currency, settings.apiProvider, dataVersion]);
 
-  // Reload when app comes back to foreground
+  // Reload when app comes back to foreground — stable listener (load ref is stable)
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state: AppStateStatus) => {
       if (state === 'active') load();

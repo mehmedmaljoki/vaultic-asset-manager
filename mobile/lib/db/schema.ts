@@ -86,6 +86,11 @@ export async function applyMigrations(db: SQLiteDatabase): Promise<void> {
     await db.execAsync(`ALTER TABLE ${TABLES.ASSETS} ADD COLUMN purity REAL`);
   }
 
+  // UNIQUE index on history(date,total) enables idempotent restore via INSERT OR IGNORE.
+  await db.execAsync(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_history_date_total ON ${TABLES.HISTORY}(date, total)`
+  );
+
   // One-time cleanup of legacy seedDemo() rows. Runs on installs that previously
   // had the demo data; idempotent — once the `seeded` flag is gone, this is a no-op.
   const seededFlag = await db.getFirstAsync<{ value: string }>(

@@ -1,8 +1,12 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { Debt, DebtTransaction } from '../models/Debt';
 import {
-  dbGetDebts, dbAddDebt, dbAdjustDebt, dbDeleteDebt,
+  dbGetDebts, dbAddDebt, dbAdjustDebt, dbDeleteDebt, dbSplitDebt,
 } from '../repositories/DebtRepository';
+
+function uid(): string {
+  return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+}
 
 export async function getDebts(db: SQLiteDatabase): Promise<Debt[]> {
   return dbGetDebts(db);
@@ -15,10 +19,10 @@ export async function addDebt(
   const now = new Date().toISOString();
   const debt: Debt = {
     ...data,
-    id:           Date.now().toString(),
+    id:           uid(),
     createdAt:    now,
     transactions: [{
-      id:     `${Date.now()}_init`,
+      id:     uid(),
       amount: data.amount,
       date:   now,
       note:   'Initial amount',
@@ -38,7 +42,7 @@ export async function adjustDebt(
   const newAmount = Math.max(0, currentAmount + delta);
   const now = new Date().toISOString();
   const tx: DebtTransaction = {
-    id:     Date.now().toString(),
+    id:     uid(),
     amount: delta,
     date:   now,
     note,
@@ -50,7 +54,7 @@ export async function deleteDebt(db: SQLiteDatabase, id: string): Promise<void> 
   await dbDeleteDebt(db, id);
 }
 
-/** Split a debt evenly across people, creating one sub-debt per person. */
+/** Split a debt evenly across people, creating one sub-debt per person (atomic). */
 export async function splitDebt(
   db: SQLiteDatabase,
   debt: Debt
@@ -58,28 +62,22 @@ export async function splitDebt(
   if (!debt.people || debt.people.length <= 1) return [debt];
 
   const share = parseFloat((debt.amount / debt.people.length).toFixed(2));
-  const splits: Debt[] = [];
-  let i = 0;
-  for (const person of debt.people) {
-    const now = new Date().toISOString();
-    const d: Debt = {
-      id:        `${Date.now()}_${i++}`,
-      direction: debt.direction,
-      name:      person,
-      amount:    share,
-      note:      `Split from: ${debt.name}`,
-      people:    [person],
-      createdAt: now,
-      transactions: [{
-        id:     `${Date.now()}_${i}_init`,
-        amount: share,
-        date:   now,
-        note:   `Split from ${debt.name}`,
-      }],
-    };
-    await dbAddDebt(db, d);
-    splits.push(d);
-  }
-  await dbDeleteDebt(db, debt.id);
+  const now = new Date().toISOString();
+  const splits: Debt[] = debt.people.map(person => ({
+    id:        uid(),
+    direction: debt.direction,
+    name:      person,
+    amount:    share,
+    note:      `Split from: ${debt.name}`,
+    people:    [person],
+    createdAt: now,
+    transactions: [{
+      id:     uid(),
+      amount: share,
+      date:   now,
+      note:   `Split from ${debt.name}`,
+    }],
+  }));
+  await dbSplitDebt(db, debt.id, splits);
   return splits;
 }

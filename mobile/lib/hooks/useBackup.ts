@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Share } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import * as DocumentPicker from 'expo-document-picker';
@@ -16,20 +16,25 @@ export interface UseBackupResult {
 export function useBackup(onDataChanged?: () => Promise<void>): UseBackupResult {
   const db = useSQLiteContext();
   const [status, setStatus] = useState<BackupStatus>('idle');
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  function scheduleReset() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setStatus('idle'), 2000);
+  }
 
   const handleExport = useCallback(async () => {
     setStatus('exporting');
     try {
       const json = await exportData(db);
-      await Share.share({
-        title:   'Asset Manager Backup',
-        message: json,
-      });
+      await Share.share({ title: 'Asset Manager Backup', message: json });
       setStatus('success');
     } catch {
       setStatus('error');
     } finally {
-      setTimeout(() => setStatus('idle'), 2000);
+      scheduleReset();
     }
   }, [db]);
 
@@ -46,14 +51,14 @@ export function useBackup(onDataChanged?: () => Promise<void>): UseBackupResult 
       }
       const res  = await fetch(result.assets[0].uri);
       const json = await res.text();
-      const ok   = await importData(db, json);
-      setStatus(ok ? 'success' : 'error');
-      if (ok) await onDataChanged?.();
-      setTimeout(() => setStatus('idle'), 2000);
-      return ok;
+      const out  = await importData(db, json);
+      setStatus(out.ok ? 'success' : 'error');
+      if (out.ok) await onDataChanged?.();
+      scheduleReset();
+      return out.ok;
     } catch {
       setStatus('error');
-      setTimeout(() => setStatus('idle'), 2000);
+      scheduleReset();
       return false;
     }
   }, [db, onDataChanged]);
@@ -67,7 +72,7 @@ export function useBackup(onDataChanged?: () => Promise<void>): UseBackupResult 
     } catch {
       setStatus('error');
     } finally {
-      setTimeout(() => setStatus('idle'), 2000);
+      scheduleReset();
     }
   }, [db, onDataChanged]);
 

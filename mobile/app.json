@@ -33,8 +33,14 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      ["expo-local-authentication", { "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for app-lock." }],
+      "expo-web-browser"
     ],
+    "extra": {
+      "googleAndroidClientId": "",
+      "googleIosClientId": ""
+    },
     "experiments": {
       "typedRoutes": true
     }
