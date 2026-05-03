@@ -15,7 +15,13 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vaultic.app",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "CFBundleLocalizations": [
+          "en", "de", "ar", "tr", "sr", "bs", "hr",
+          "es", "fr", "nl", "zh-Hans", "hi", "ru", "id", "ms", "fa"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -34,7 +40,8 @@
       "expo-router",
       "expo-font",
       "expo-asset",
-      ["expo-local-authentication", { "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for app-lock." }]
+      ["expo-local-authentication", { "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for app-lock." }],
+      "./plugins/withLocalizedAppName"
     ],
     "extra": {
       "googleAndroidClientId": "",
