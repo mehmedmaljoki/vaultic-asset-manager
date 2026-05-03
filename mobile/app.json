@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Asset Manager",
-    "slug": "asset-manager",
+    "name": "Vaultic",
+    "slug": "vaultic",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "assetmanager",
+    "scheme": "vaultic",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.assetmanager.app",
+      "bundleIdentifier": "com.vaultic.app",
       "buildNumber": "1"
     },
     "android": {
@@ -22,7 +22,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#4A9E76"
       },
-      "package": "com.assetmanager.app",
+      "package": "com.vaultic.app",
       "versionCode": 1
     },
     "web": {
