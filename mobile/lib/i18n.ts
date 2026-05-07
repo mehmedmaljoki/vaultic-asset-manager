@@ -2111,6 +2111,109 @@ for (const lang of Object.keys(T) as LangCode[]) {
   Object.assign(T[lang], EXTRA6[lang] ?? {});
 }
 
+const EXTRA7: Record<LangCode, Strings> = {
+  en: {
+    cloud_no_backups:     'No Backups',
+    cloud_no_backups_msg: 'No Vaultic backups found in Google Drive.',
+    cloud_pick_title:     'Restore from Google Drive',
+    cloud_pick_msg:       'Choose a backup to restore:',
+  },
+  de: {
+    cloud_no_backups:     'Keine Sicherungen',
+    cloud_no_backups_msg: 'Keine Vaultic-Sicherungen in Google Drive gefunden.',
+    cloud_pick_title:     'Aus Google Drive wiederherstellen',
+    cloud_pick_msg:       'Sicherung auswählen:',
+  },
+  ar: {
+    cloud_no_backups:     'لا نسخ احتياطية',
+    cloud_no_backups_msg: 'لم يتم العثور على نسخ Vaultic الاحتياطية في Google Drive.',
+    cloud_pick_title:     'الاستعادة من Google Drive',
+    cloud_pick_msg:       'اختر نسخة احتياطية للاستعادة:',
+  },
+  tr: {
+    cloud_no_backups:     'Yedek Yok',
+    cloud_no_backups_msg: 'Google Drive\'da Vaultic yedeği bulunamadı.',
+    cloud_pick_title:     'Google Drive\'dan Geri Yükle',
+    cloud_pick_msg:       'Geri yüklenecek yedeği seçin:',
+  },
+  sr: {
+    cloud_no_backups:     'Nema kopija',
+    cloud_no_backups_msg: 'Nisu pronađene Vaultic kopije na Google Driveu.',
+    cloud_pick_title:     'Obnovi s Google Drivea',
+    cloud_pick_msg:       'Odaberite kopiju za obnavljanje:',
+  },
+  bs: {
+    cloud_no_backups:     'Nema kopija',
+    cloud_no_backups_msg: 'Nisu pronađene Vaultic kopije na Google Driveu.',
+    cloud_pick_title:     'Obnovi s Google Drivea',
+    cloud_pick_msg:       'Odaberite kopiju za obnavljanje:',
+  },
+  hr: {
+    cloud_no_backups:     'Nema kopija',
+    cloud_no_backups_msg: 'Nisu pronađene Vaultic kopije na Google Driveu.',
+    cloud_pick_title:     'Obnovi s Google Drivea',
+    cloud_pick_msg:       'Odaberite kopiju za obnavljanje:',
+  },
+  es: {
+    cloud_no_backups:     'Sin copias',
+    cloud_no_backups_msg: 'No se encontraron copias de Vaultic en Google Drive.',
+    cloud_pick_title:     'Restaurar desde Google Drive',
+    cloud_pick_msg:       'Elige una copia de seguridad:',
+  },
+  fr: {
+    cloud_no_backups:     'Aucune sauvegarde',
+    cloud_no_backups_msg: 'Aucune sauvegarde Vaultic trouvée dans Google Drive.',
+    cloud_pick_title:     'Restaurer depuis Google Drive',
+    cloud_pick_msg:       'Choisissez une sauvegarde à restaurer :',
+  },
+  nl: {
+    cloud_no_backups:     'Geen back-ups',
+    cloud_no_backups_msg: 'Geen Vaultic-back-ups gevonden in Google Drive.',
+    cloud_pick_title:     'Herstellen vanuit Google Drive',
+    cloud_pick_msg:       'Kies een back-up om te herstellen:',
+  },
+  zh: {
+    cloud_no_backups:     '无备份',
+    cloud_no_backups_msg: '在 Google Drive 中未找到 Vaultic 备份。',
+    cloud_pick_title:     '从 Google Drive 恢复',
+    cloud_pick_msg:       '选择要恢复的备份：',
+  },
+  hi: {
+    cloud_no_backups:     'कोई बैकअप नहीं',
+    cloud_no_backups_msg: 'Google Drive में कोई Vaultic बैकअप नहीं मिला।',
+    cloud_pick_title:     'Google Drive से पुनर्स्थापित करें',
+    cloud_pick_msg:       'पुनर्स्थापित करने के लिए बैकअप चुनें:',
+  },
+  ru: {
+    cloud_no_backups:     'Нет резервных копий',
+    cloud_no_backups_msg: 'Резервные копии Vaultic не найдены в Google Диске.',
+    cloud_pick_title:     'Восстановить из Google Диска',
+    cloud_pick_msg:       'Выберите резервную копию:',
+  },
+  id: {
+    cloud_no_backups:     'Tidak Ada Cadangan',
+    cloud_no_backups_msg: 'Tidak ada cadangan Vaultic di Google Drive.',
+    cloud_pick_title:     'Pulihkan dari Google Drive',
+    cloud_pick_msg:       'Pilih cadangan untuk dipulihkan:',
+  },
+  ms: {
+    cloud_no_backups:     'Tiada Sandaran',
+    cloud_no_backups_msg: 'Tiada sandaran Vaultic dijumpai dalam Google Drive.',
+    cloud_pick_title:     'Pulihkan dari Google Drive',
+    cloud_pick_msg:       'Pilih sandaran untuk dipulihkan:',
+  },
+  fa: {
+    cloud_no_backups:     'بدون پشتیبان',
+    cloud_no_backups_msg: 'هیچ نسخه پشتیبان Vaultic در Google Drive یافت نشد.',
+    cloud_pick_title:     'بازگردانی از Google Drive',
+    cloud_pick_msg:       'یک نسخه پشتیبان برای بازگردانی انتخاب کنید:',
+  },
+};
+
+for (const lang of Object.keys(T) as LangCode[]) {
+  Object.assign(T[lang], EXTRA7[lang] ?? {});
+}
+
 /**
  * Tiny template helper: replaces `{key}` placeholders in the resolved string.
  * No fallback to ICU/plurals — keep it simple. Missing keys just stay as-is.

@@ -13,7 +13,6 @@ export interface CloudFile {
 export interface CloudAdapter {
   name: 'gdrive' | 'icloud';
   isAvailable(): Promise<boolean>;
-  signIn?(): Promise<boolean>;
   upload(filename: string, json: string): Promise<void>;
   list(): Promise<CloudFile[]>;
   download(id: string): Promise<string>;
