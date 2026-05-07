@@ -5,6 +5,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { exportData, importData, clearAllData } from '../services/BackupService';
+import { applySystemDefaults } from '../services/SystemDefaultsService';
 
 export type BackupStatus = 'idle' | 'exporting' | 'importing' | 'clearing' | 'success' | 'error';
 
@@ -78,6 +79,7 @@ export function useBackup(onDataChanged?: () => Promise<void>): UseBackupResult 
     setStatus('clearing');
     try {
       await clearAllData(db);
+      await applySystemDefaults(db);
       await onDataChanged?.();
       setStatus('success');
     } catch {
