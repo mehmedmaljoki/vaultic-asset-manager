@@ -6,6 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { type Theme } from '@/lib/colors';
 import { useApp } from '@/lib/AppContext';
+import { RADIUS, SPACE, TYPE } from '@/lib/theme/tokens';
 import { useAssets } from '@/lib/hooks/useAssets';
 import { useDebts } from '@/lib/hooks/useDebts';
 import { useZakat } from '@/lib/hooks/useZakat';
@@ -64,7 +65,7 @@ function InfoSheet({ visible, onClose, th }: { visible: boolean; onClose: () => 
             { boldKey: 'zakat_info_zakatable_bold',  textKey: 'zakat_info_zakatable_text' },
           ].map(({ boldKey, textKey }, i) => (
             <Text key={i} style={[s.infoText, { color: th.tx2, marginBottom: 14 }]}>
-              <Text style={{ color: th.tx, fontFamily: 'DMSans_700Bold' }}>{t(boldKey)}</Text>
+              <Text style={{ color: th.tx, fontFamily: TYPE.family.bold }}>{t(boldKey)}</Text>
               {t(textKey)}
             </Text>
           ))}
@@ -286,7 +287,7 @@ export default function ZakatScreen() {
                     <Text> · {g.hawlMet}/{g.hawlTotal} {t('zakat_hawl_short')}</Text>
                   )}
                   {g.isZakatable && g.total != null && g.total > 0 && (
-                    <Text style={{ color: th.accTx, fontFamily: 'DMSans_700Bold' }}>
+                    <Text style={{ color: th.accTx, fontFamily: TYPE.family.bold }}>
                       {'  →  '}{blur ?? fmt(g.total * 0.025)}
                     </Text>
                   )}
@@ -303,7 +304,7 @@ export default function ZakatScreen() {
             {summaryRows.map(row => (
               <View key={row.label} style={[s.summaryRow, { borderBottomColor: th.bdr }]}>
                 <Text style={[s.summaryLabel, { color: th.tx2 }]}>{row.label}</Text>
-                <Text style={[s.summaryVal, { color: row.hi ? th.accTx : th.tx, fontFamily: 'DMSans_700Bold' }]}>
+                <Text style={[s.summaryVal, { color: row.hi ? th.accTx : th.tx, fontFamily: TYPE.family.bold }]}>
                   {row.val}
                 </Text>
               </View>
@@ -361,81 +362,81 @@ const s = StyleSheet.create({
   root: { flex: 1 },
 
   // Header
-  header:      { paddingTop: 28, paddingHorizontal: 20, paddingBottom: 20, flexDirection: 'row', alignItems: 'center' },
-  headerTitle: { fontSize: 22, fontFamily: 'DMSans_700Bold', letterSpacing: -0.6 },
-  headerSub:   { fontSize: 13, fontFamily: 'DMSans_400Regular', marginTop: 1 },
-  infoBtn:     { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1 },
-  infoBtnText: { fontSize: 12, fontFamily: 'DMSans_700Bold' },
+  header:      { paddingTop: SPACE['2xl']+4, paddingHorizontal: SPACE.xl, paddingBottom: SPACE.xl, flexDirection: 'row', alignItems: 'center' },
+  headerTitle: { fontSize: 22, fontFamily: TYPE.family.bold, letterSpacing: -0.6 },
+  headerSub:   { fontSize: TYPE.caption.size, fontFamily: TYPE.family.regular, marginTop: 1 },
+  infoBtn:     { borderRadius: RADIUS.xl, paddingHorizontal: SPACE.md, paddingVertical: 7, borderWidth: 1 },
+  infoBtnText: { fontSize: TYPE.micro.size+2, fontFamily: TYPE.family.bold },
 
   // Cards
-  card:      { marginHorizontal: 16, marginBottom: 12, borderRadius: 16, padding: 16 },
-  cardLabel: { fontSize: 11, fontFamily: 'DMSans_700Bold', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10 },
+  card:      { marginHorizontal: SPACE.lg, marginBottom: RADIUS.md, borderRadius: RADIUS.lg, padding: SPACE.lg },
+  cardLabel: { fontSize: TYPE.label.size, fontFamily: TYPE.family.bold, textTransform: 'uppercase', letterSpacing: TYPE.label.ls, marginBottom: 10 },
 
   // Nisab selector
-  nisabRow:       { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  nisabBtn:       { flex: 1, borderRadius: 12, padding: 12, alignItems: 'center' },
-  nisabBtnLabel:  { fontSize: 14, fontFamily: 'DMSans_700Bold' },
-  nisabBtnSub:    { fontSize: 11, fontFamily: 'DMSans_400Regular', marginTop: 2 },
-  nisabNote:      { fontSize: 12, fontFamily: 'DMSans_400Regular', lineHeight: 18 },
-  nisabNoteStrong:{ fontFamily: 'DMSans_700Bold' },
+  nisabRow:       { flexDirection: 'row', gap: SPACE.sm, marginBottom: RADIUS.md },
+  nisabBtn:       { flex: 1, borderRadius: RADIUS.md, padding: RADIUS.md, alignItems: 'center' },
+  nisabBtnLabel:  { fontSize: TYPE.caption.size+1, fontFamily: TYPE.family.bold },
+  nisabBtnSub:    { fontSize: TYPE.label.size, fontFamily: TYPE.family.regular, marginTop: 2 },
+  nisabNote:      { fontSize: TYPE.micro.size+2, fontFamily: TYPE.family.regular, lineHeight: 18 },
+  nisabNoteStrong:{ fontFamily: TYPE.family.bold },
 
   // Result
-  resultCard:   { marginHorizontal: 16, marginBottom: 12, borderRadius: 16, padding: 20 },
-  resultLabel:  { fontSize: 12, fontFamily: 'DMSans_700Bold', color: 'rgba(255,255,255,0.75)', letterSpacing: 0.8, marginBottom: 8 },
-  resultAmount: { fontSize: 36, fontFamily: 'DMSans_700Bold', color: '#fff', letterSpacing: -1.5, lineHeight: 40 },
-  resultSub:    { fontSize: 12, fontFamily: 'DMSans_400Regular', color: 'rgba(255,255,255,0.75)', marginTop: 8 },
-  hawlBadge:    { marginTop: 12, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10, padding: 10 },
-  hawlText:     { fontSize: 12, fontFamily: 'DMSans_400Regular', color: 'rgba(255,255,255,0.9)' },
+  resultCard:   { marginHorizontal: SPACE.lg, marginBottom: RADIUS.md, borderRadius: RADIUS.lg, padding: SPACE.xl },
+  resultLabel:  { fontSize: TYPE.micro.size+2, fontFamily: TYPE.family.bold, color: 'rgba(255,255,255,0.75)', letterSpacing: 0.8, marginBottom: SPACE.sm },
+  resultAmount: { fontSize: TYPE.hero.size, fontFamily: TYPE.family.bold, color: '#fff', letterSpacing: TYPE.hero.ls, lineHeight: TYPE.hero.lh },
+  resultSub:    { fontSize: TYPE.micro.size+2, fontFamily: TYPE.family.regular, color: 'rgba(255,255,255,0.75)', marginTop: SPACE.sm },
+  hawlBadge:    { marginTop: RADIUS.md, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: RADIUS.sm, padding: 10 },
+  hawlText:     { fontSize: TYPE.micro.size+2, fontFamily: TYPE.family.regular, color: 'rgba(255,255,255,0.9)' },
 
   // Quran block (inside result card)
-  ayatToggle:     { marginTop: 12, alignItems: 'center' },
-  ayatToggleText: { fontSize: 11, color: 'rgba(255,255,255,0.65)', fontFamily: 'DMSans_700Bold', letterSpacing: 0.4 },
-  quranBlock:   { marginTop: 10, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.3)' },
-  quranAr:      { fontSize: 16, lineHeight: 28, color: '#fff', textAlign: 'right', fontFamily: 'DMSans_400Regular', writingDirection: 'rtl' },
-  quranTr:      { fontSize: 12, lineHeight: 18, color: 'rgba(255,255,255,0.9)', fontFamily: 'DMSans_400Regular', marginTop: 8, fontStyle: 'italic' },
+  ayatToggle:     { marginTop: RADIUS.md, alignItems: 'center' },
+  ayatToggleText: { fontSize: TYPE.label.size, color: 'rgba(255,255,255,0.65)', fontFamily: TYPE.family.bold, letterSpacing: 0.4 },
+  quranBlock:   { marginTop: 10, paddingTop: RADIUS.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.3)' },
+  quranAr:      { fontSize: TYPE.body.size+1, lineHeight: 28, color: '#fff', textAlign: 'right', fontFamily: TYPE.family.regular, writingDirection: 'rtl' },
+  quranTr:      { fontSize: TYPE.micro.size+2, lineHeight: 18, color: 'rgba(255,255,255,0.9)', fontFamily: TYPE.family.regular, marginTop: SPACE.sm, fontStyle: 'italic' },
 
   // Categories
-  sectionTitle:     { fontSize: 13, fontFamily: 'DMSans_700Bold', letterSpacing: -0.2, marginBottom: 12 },
-  categoryRow:      { paddingVertical: 12 },
-  categoryTop:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  categoryLeft:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionTitle:     { fontSize: TYPE.caption.size, fontFamily: TYPE.family.bold, letterSpacing: -0.2, marginBottom: RADIUS.md },
+  categoryRow:      { paddingVertical: RADIUS.md },
+  categoryTop:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACE.xs },
+  categoryLeft:     { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm },
   categoryRight:    { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  dot:              { width: 8, height: 8, borderRadius: 4 },
-  categoryName:     { fontSize: 14, fontFamily: 'DMSans_700Bold' },
-  categoryTotal:    { fontSize: 14, fontFamily: 'DMSans_700Bold' },
-  categoryNote:     { paddingLeft: 16 },
-  categoryNoteText: { fontSize: 11, fontFamily: 'DMSans_400Regular' },
-  emptyText:        { fontSize: 13, fontFamily: 'DMSans_400Regular', textAlign: 'center', paddingVertical: 20 },
+  dot:              { width: 8, height: 8, borderRadius: RADIUS.xs },
+  categoryName:     { fontSize: TYPE.caption.size+1, fontFamily: TYPE.family.bold },
+  categoryTotal:    { fontSize: TYPE.caption.size+1, fontFamily: TYPE.family.bold },
+  categoryNote:     { paddingLeft: SPACE.lg },
+  categoryNoteText: { fontSize: TYPE.label.size, fontFamily: TYPE.family.regular },
+  emptyText:        { fontSize: TYPE.caption.size, fontFamily: TYPE.family.regular, textAlign: 'center', paddingVertical: SPACE.xl },
 
   // Toggle
-  toggle:      { width: 42, height: 24, borderRadius: 12, justifyContent: 'center' },
-  toggleThumb: { position: 'absolute', width: 18, height: 18, borderRadius: 9, backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
+  toggle:      { width: 42, height: 24, borderRadius: RADIUS.md, justifyContent: 'center' },
+  toggleThumb: { position: 'absolute', width: 18, height: 18, borderRadius: RADIUS.sm-1, backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
 
   // Summary
   summaryRow:   { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 9, borderBottomWidth: 0.5 },
-  summaryLabel: { fontSize: 13, fontFamily: 'DMSans_400Regular' },
-  summaryVal:   { fontSize: 13 },
+  summaryLabel: { fontSize: TYPE.caption.size, fontFamily: TYPE.family.regular },
+  summaryVal:   { fontSize: TYPE.caption.size },
 
   // Receipt
-  receiptCount:      { fontSize: 11, fontFamily: 'DMSans_400Regular', marginBottom: 10, marginTop: -6 },
+  receiptCount:      { fontSize: TYPE.label.size, fontFamily: TYPE.family.regular, marginBottom: 10, marginTop: -6 },
   receiptRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
-  receiptLeft:       { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 12 },
+  receiptLeft:       { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, flex: 1, marginRight: RADIUS.md },
   receiptRight:      { alignItems: 'flex-end' },
-  receiptName:       { fontSize: 13, fontFamily: 'DMSans_700Bold' },
-  receiptSub:        { fontSize: 11, fontFamily: 'DMSans_400Regular', marginTop: 1 },
-  receiptVal:        { fontSize: 13, fontFamily: 'DMSans_700Bold' },
-  receiptZakat:      { fontSize: 11, fontFamily: 'DMSans_700Bold', marginTop: 1 },
-  receiptTotal:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTopWidth: 0.5, marginTop: 4 },
-  receiptTotalLabel: { fontSize: 12, fontFamily: 'DMSans_400Regular' },
-  receiptTotalVal:   { fontSize: 14, fontFamily: 'DMSans_700Bold' },
+  receiptName:       { fontSize: TYPE.caption.size, fontFamily: TYPE.family.bold },
+  receiptSub:        { fontSize: TYPE.label.size, fontFamily: TYPE.family.regular, marginTop: 1 },
+  receiptVal:        { fontSize: TYPE.caption.size, fontFamily: TYPE.family.bold },
+  receiptZakat:      { fontSize: TYPE.label.size, fontFamily: TYPE.family.bold, marginTop: 1 },
+  receiptTotal:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTopWidth: 0.5, marginTop: SPACE.xs },
+  receiptTotalLabel: { fontSize: TYPE.micro.size+2, fontFamily: TYPE.family.regular },
+  receiptTotalVal:   { fontSize: TYPE.caption.size+1, fontFamily: TYPE.family.bold },
 
   // Info sheet
   overlay:     { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet:       { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' },
-  sheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 0.5 },
-  sheetTitle:  { fontSize: 17, fontFamily: 'DMSans_700Bold', letterSpacing: -0.3 },
-  sheetClose:  { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  infoText:    { fontSize: 14, fontFamily: 'DMSans_400Regular', lineHeight: 22 },
-  infoDisclaimer: { fontSize: 12, fontFamily: 'DMSans_400Regular', lineHeight: 18 },
+  sheet:       { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg, maxHeight: '80%' },
+  sheetHandle: { width: 40, height: 4, borderRadius: RADIUS.pill, alignSelf: 'center', marginTop: SPACE.md, marginBottom: SPACE.xs },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACE.xl, paddingVertical: 14, borderBottomWidth: 0.5 },
+  sheetTitle:  { fontSize: TYPE.body.size+2, fontFamily: TYPE.family.bold, letterSpacing: -0.3 },
+  sheetClose:  { width: 30, height: 30, borderRadius: RADIUS.pill, alignItems: 'center', justifyContent: 'center' },
+  infoText:    { fontSize: TYPE.caption.size+1, fontFamily: TYPE.family.regular, lineHeight: 22 },
+  infoDisclaimer: { fontSize: TYPE.micro.size+2, fontFamily: TYPE.family.regular, lineHeight: 18 },
 });

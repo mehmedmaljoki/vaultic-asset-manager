@@ -8,6 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { type Theme } from '@/lib/colors';
 import { useApp } from '@/lib/AppContext';
+import { RADIUS, SPACE, TYPE } from '@/lib/theme/tokens';
 import { LANGS } from '@/lib/i18n';
 import { useBackup } from '@/lib/hooks/useBackup';
 import { useCloudBackup } from '@/lib/hooks/useCloudBackup';
@@ -540,86 +541,86 @@ export default function SettingsScreen() {
 const s = StyleSheet.create({
   root: { flex: 1 },
 
-  header:      { paddingTop: 28, paddingHorizontal: 20, paddingBottom: 20 },
-  headerTitle: { fontSize: 22, fontFamily: 'DMSans_700Bold', letterSpacing: -0.6 },
-  headerSub:   { fontSize: 13, fontFamily: 'DMSans_400Regular', marginTop: 1 },
+  header:      { paddingTop: 28, paddingHorizontal: SPACE.xl, paddingBottom: SPACE.xl },
+  headerTitle: { fontSize: 22, fontFamily: TYPE.family.bold, letterSpacing: -0.6 },
+  headerSub:   { fontSize: 13, fontFamily: TYPE.family.regular, marginTop: 1 },
 
   // Section
-  section:      { marginHorizontal: 16, marginTop: 20 },
-  sectionTitle: { fontSize: 11, fontFamily: 'DMSans_700Bold', letterSpacing: 0.8, marginBottom: 6, paddingHorizontal: 4 },
-  sectionCard:  { borderRadius: 16, overflow: 'hidden' },
+  section:      { marginHorizontal: SPACE.lg, marginTop: SPACE.xl },
+  sectionTitle: { fontSize: TYPE.label.size, fontFamily: TYPE.family.bold, letterSpacing: TYPE.label.ls, textTransform: 'uppercase', marginBottom: SPACE.sm - 2, paddingHorizontal: SPACE.xs },
+  sectionCard:  { borderRadius: RADIUS.lg, overflow: 'hidden' },
 
   // Row
-  row:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
-  rowLabel: { fontSize: 14, fontFamily: 'DMSans_700Bold', lineHeight: 18 },
-  rowSub:   { fontSize: 11, fontFamily: 'DMSans_400Regular', marginTop: 3, lineHeight: 16 },
+  row:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACE.lg, paddingVertical: 14 },
+  rowLabel: { fontSize: 14, fontFamily: TYPE.family.bold, lineHeight: 18 },
+  rowSub:   { fontSize: 11, fontFamily: TYPE.family.regular, marginTop: 3, lineHeight: 16 },
 
   // Toggle
-  toggle:      { width: 44, height: 26, borderRadius: 13 },
-  toggleThumb: { position: 'absolute', width: 20, height: 20, top: 3, borderRadius: 10, backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.25, shadowRadius: 2, elevation: 2 },
+  toggle:      { width: 44, height: 26, borderRadius: RADIUS.pill },
+  toggleThumb: { position: 'absolute', width: 20, height: 20, top: 3, borderRadius: RADIUS.pill, backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.25, shadowRadius: 2, elevation: 2 },
 
   // Segment
-  segTrack:       { flexDirection: 'row', borderRadius: 10, padding: 2 },
-  segBtn:         { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  segTrack:       { flexDirection: 'row', borderRadius: RADIUS.sm, padding: 2 },
+  segBtn:         { borderRadius: RADIUS.xs + 2, paddingHorizontal: SPACE.sm + 2, paddingVertical: 5 },
   segBtnActive:   {},
-  segBtnText:     { fontSize: 11, fontFamily: 'DMSans_700Bold' },
+  segBtnText:     { fontSize: 11, fontFamily: TYPE.family.bold },
 
   // Small button
-  smallBtn:     { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7 },
-  smallBtnText: { fontSize: 12, fontFamily: 'DMSans_700Bold' },
+  smallBtn:     { borderRadius: RADIUS.sm, paddingHorizontal: 14, paddingVertical: 7 },
+  smallBtnText: { fontSize: 12, fontFamily: TYPE.family.bold },
 
   // Cloud error
-  cloudErrText: { fontSize: 11, fontFamily: 'DMSans_700Bold', textDecorationLine: 'underline' },
+  cloudErrText: { fontSize: 11, fontFamily: TYPE.family.bold, textDecorationLine: 'underline' },
 
   // Currency trigger
-  pickerTrigger:     { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1 },
-  pickerTriggerText: { fontSize: 13, fontFamily: 'DMSans_700Bold' },
+  pickerTrigger:     { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm - 2, borderRadius: RADIUS.sm, paddingHorizontal: SPACE.md, paddingVertical: 7, borderWidth: 1 },
+  pickerTriggerText: { fontSize: 13, fontFamily: TYPE.family.bold },
 
   // About
-  aboutHero:    { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 20, borderBottomWidth: 0.5 },
-  appIcon:      { width: 52, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  appName:      { fontSize: 15, fontFamily: 'DMSans_700Bold', letterSpacing: -0.3 },
-  appVersion:   { fontSize: 12, fontFamily: 'DMSans_400Regular', marginTop: 2 },
-  appTagline:   { fontSize: 11, fontFamily: 'DMSans_400Regular', marginTop: 2 },
-  aboutDesc:    { padding: 16, borderBottomWidth: 0.5 },
-  aboutDescText:{ fontSize: 13, fontFamily: 'DMSans_400Regular', lineHeight: 20 },
+  aboutHero:    { flexDirection: 'row', alignItems: 'center', gap: 14, padding: SPACE.xl, borderBottomWidth: 0.5 },
+  appIcon:      { width: 52, height: 52, borderRadius: RADIUS.lg, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  appName:      { fontSize: 15, fontFamily: TYPE.family.bold, letterSpacing: -0.3 },
+  appVersion:   { fontSize: 12, fontFamily: TYPE.family.regular, marginTop: 2 },
+  appTagline:   { fontSize: 11, fontFamily: TYPE.family.regular, marginTop: 2 },
+  aboutDesc:    { padding: SPACE.lg, borderBottomWidth: 0.5 },
+  aboutDescText:{ fontSize: 13, fontFamily: TYPE.family.regular, lineHeight: 20 },
   statsRow:     { flexDirection: 'row', borderBottomWidth: 0.5 },
   statCell:     { flex: 1, alignItems: 'center', paddingVertical: 14 },
-  statVal:      { fontSize: 20, fontFamily: 'DMSans_700Bold' },
-  statLabel:    { fontSize: 10, fontFamily: 'DMSans_700Bold', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
+  statVal:      { fontSize: 20, fontFamily: TYPE.family.bold },
+  statLabel:    { fontSize: 10, fontFamily: TYPE.family.bold, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
   creditsToggle:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderTopWidth: 0.5 },
-  creditsToggleText: { fontSize: 12, fontFamily: 'DMSans_700Bold' },
-  creditsBody:  { paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
+  creditsToggleText: { fontSize: 12, fontFamily: TYPE.family.bold },
+  creditsBody:  { paddingHorizontal: SPACE.lg, paddingBottom: SPACE.lg, gap: SPACE.sm + 2 },
   creditRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  creditName:   { fontSize: 12, fontFamily: 'DMSans_700Bold' },
-  creditRole:   { fontSize: 11, fontFamily: 'DMSans_400Regular' },
+  creditName:   { fontSize: 12, fontFamily: TYPE.family.bold },
+  creditRole:   { fontSize: 11, fontFamily: TYPE.family.regular },
 
   // Feedback
-  fbCatGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
-  fbCatBtn:    { width: '47%', flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderRadius: 12, padding: 10 },
+  fbCatGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm, marginBottom: 14 },
+  fbCatBtn:    { width: '47%', flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, borderWidth: 1.5, borderRadius: RADIUS.md, padding: SPACE.sm + 2 },
   fbCatIcon:   { fontSize: 16 },
-  fbCatLabel:  { fontSize: 12, fontFamily: 'DMSans_700Bold' },
-  fbTextarea:  { borderWidth: 1.5, borderRadius: 12, padding: 12, fontSize: 14, fontFamily: 'DMSans_400Regular', minHeight: 100, marginBottom: 4 },
-  fbCharCount: { fontSize: 11, fontFamily: 'DMSans_400Regular', textAlign: 'right', marginBottom: 12 },
-  fbSubmit:    { borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  fbSubmitText:{ fontSize: 14, fontFamily: 'DMSans_700Bold' },
-  fbDone:      { padding: 24, alignItems: 'center' },
-  fbDoneEmoji: { fontSize: 40, marginBottom: 12 },
-  fbDoneTitle: { fontSize: 16, fontFamily: 'DMSans_700Bold', marginBottom: 8 },
-  fbDoneSub:   { fontSize: 13, fontFamily: 'DMSans_400Regular', textAlign: 'center', lineHeight: 20, marginBottom: 20 },
-  fbDoneBtn:   { borderRadius: 12, paddingHorizontal: 24, paddingVertical: 10 },
-  fbDoneBtnText:{ fontSize: 13, fontFamily: 'DMSans_700Bold' },
+  fbCatLabel:  { fontSize: 12, fontFamily: TYPE.family.bold },
+  fbTextarea:  { borderWidth: 1.5, borderRadius: RADIUS.md, padding: SPACE.md, fontSize: 14, fontFamily: TYPE.family.regular, minHeight: 100, marginBottom: 4 },
+  fbCharCount: { fontSize: 11, fontFamily: TYPE.family.regular, textAlign: 'right', marginBottom: SPACE.md },
+  fbSubmit:    { borderRadius: RADIUS.md, paddingVertical: 14, alignItems: 'center' },
+  fbSubmitText:{ fontSize: 14, fontFamily: TYPE.family.bold },
+  fbDone:      { padding: SPACE['2xl'], alignItems: 'center' },
+  fbDoneEmoji: { fontSize: 40, marginBottom: SPACE.md },
+  fbDoneTitle: { fontSize: 16, fontFamily: TYPE.family.bold, marginBottom: SPACE.sm },
+  fbDoneSub:   { fontSize: 13, fontFamily: TYPE.family.regular, textAlign: 'center', lineHeight: 20, marginBottom: SPACE.xl },
+  fbDoneBtn:   { borderRadius: RADIUS.md, paddingHorizontal: SPACE['2xl'], paddingVertical: SPACE.sm + 2 },
+  fbDoneBtnText:{ fontSize: 13, fontFamily: TYPE.family.bold },
 
   // Footer
-  footer:    { marginTop: 24, alignItems: 'center', paddingBottom: 8 },
-  footerText:{ fontSize: 12, fontFamily: 'DMSans_400Regular' },
-  footerSub: { fontSize: 11, fontFamily: 'DMSans_400Regular', marginTop: 4, opacity: 0.6 },
+  footer:    { marginTop: SPACE['2xl'], alignItems: 'center', paddingBottom: SPACE.sm },
+  footerText:{ fontSize: 12, fontFamily: TYPE.family.regular },
+  footerSub: { fontSize: 11, fontFamily: TYPE.family.regular, marginTop: 4, opacity: 0.6 },
 
   // Picker modal
   overlay:       { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
-  pickerSheet:   { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%' },
-  pickerHandle:  { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
-  pickerTitle:   { fontSize: 14, fontFamily: 'DMSans_700Bold', textAlign: 'center', paddingVertical: 14, borderBottomWidth: 0.5 },
-  pickerOpt:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 0.5 },
-  pickerOptText: { fontSize: 15, fontFamily: 'DMSans_400Regular' },
+  pickerSheet:   { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, maxHeight: '70%' },
+  pickerHandle:  { width: 40, height: 4, borderRadius: RADIUS.pill, alignSelf: 'center', marginTop: SPACE.sm + 2, marginBottom: 4 },
+  pickerTitle:   { fontSize: 14, fontFamily: TYPE.family.bold, textAlign: 'center', paddingVertical: 14, borderBottomWidth: 0.5 },
+  pickerOpt:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACE.xl, paddingVertical: 14, borderBottomWidth: 0.5 },
+  pickerOptText: { fontSize: 15, fontFamily: TYPE.family.regular },
 });

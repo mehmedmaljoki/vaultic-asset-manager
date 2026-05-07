@@ -8,6 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { type Theme } from '@/lib/colors';
 import { useApp } from '@/lib/AppContext';
+import { RADIUS, SPACE, TYPE } from '@/lib/theme/tokens';
 import { useDebts } from '@/lib/hooks/useDebts';
 import type { Debt } from '@/lib/models/Debt';
 
@@ -433,7 +434,7 @@ export default function DebtsScreen() {
               onPress={() => setTab(tb.id)}
               style={[s.tabBtn, tab === tb.id && [s.tabBtnActive, { backgroundColor: th.sur, ...th.shadow }]]}
             >
-              <Text style={[s.tabBtnText, { color: tab === tb.id ? th.tx : th.tx2, fontFamily: tab === tb.id ? 'DMSans_700Bold' : 'DMSans_500Medium' }]}>
+              <Text style={[s.tabBtnText, { color: tab === tb.id ? th.tx : th.tx2, fontFamily: tab === tb.id ? TYPE.family.bold : 'DMSans_500Medium' }]}>
                 {tb.label}
               </Text>
             </Pressable>
@@ -499,96 +500,96 @@ const s = StyleSheet.create({
   root: { flex: 1 },
 
   // Header
-  header:      { paddingTop: 28, paddingHorizontal: 20, paddingBottom: 16, flexDirection: 'row', alignItems: 'center' },
-  headerTitle: { fontSize: 22, fontFamily: 'DMSans_700Bold', letterSpacing: -0.6 },
-  headerSub:   { fontSize: 13, fontFamily: 'DMSans_400Regular', marginTop: 1 },
-  addBtn:      { borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
-  addBtnText:  { fontSize: 13, fontFamily: 'DMSans_700Bold', color: '#fff' },
+  header:      { paddingTop: SPACE['2xl']+4, paddingHorizontal: SPACE.xl, paddingBottom: SPACE.lg, flexDirection: 'row', alignItems: 'center' },
+  headerTitle: { fontSize: 22, fontFamily: TYPE.family.bold, letterSpacing: -0.6 },
+  headerSub:   { fontSize: TYPE.caption.size, fontFamily: TYPE.family.regular, marginTop: 1 },
+  addBtn:      { borderRadius: RADIUS.xl, paddingHorizontal: SPACE.lg, paddingVertical: SPACE.sm },
+  addBtnText:  { fontSize: TYPE.caption.size, fontFamily: TYPE.family.bold, color: '#fff' },
 
   // Summary
-  summaryRow:       { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 16, borderBottomWidth: 0.5 },
-  summaryChip:      { flex: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 10 },
-  summaryChipLabel: { fontSize: 9, fontFamily: 'DMSans_700Bold', textTransform: 'uppercase', letterSpacing: 0.5 },
-  summaryChipVal:   { fontSize: 16, fontFamily: 'DMSans_700Bold', letterSpacing: -0.4, marginTop: 2 },
+  summaryRow:       { flexDirection: 'row', gap: SPACE.sm, paddingHorizontal: SPACE.lg, paddingBottom: SPACE.lg, borderBottomWidth: 0.5 },
+  summaryChip:      { flex: 1, borderRadius: RADIUS.md, paddingHorizontal: 10, paddingVertical: 10 },
+  summaryChipLabel: { fontSize: TYPE.micro.size-1, fontFamily: TYPE.family.bold, textTransform: 'uppercase', letterSpacing: 0.5 },
+  summaryChipVal:   { fontSize: TYPE.title.size-2, fontFamily: TYPE.family.bold, letterSpacing: -0.4, marginTop: 2 },
 
   // Tabs
-  tabWrap:      { paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 0.5 },
-  tabTrack:     { flexDirection: 'row', borderRadius: 12, padding: 3 },
-  tabBtn:       { flex: 1, borderRadius: 9, paddingVertical: 8, alignItems: 'center' },
+  tabWrap:      { paddingHorizontal: SPACE.lg, paddingVertical: 10, borderBottomWidth: 0.5 },
+  tabTrack:     { flexDirection: 'row', borderRadius: RADIUS.md, padding: 3 },
+  tabBtn:       { flex: 1, borderRadius: RADIUS.sm-1, paddingVertical: SPACE.sm, alignItems: 'center' },
   tabBtnActive: {},
-  tabBtnText:   { fontSize: 12 },
+  tabBtnText:   { fontSize: TYPE.micro.size+2 },
 
   // Debt card
-  card:       { borderRadius: 14, overflow: 'hidden' },
-  cardMain:   { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  avatar:     { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  avatarText: { fontSize: 16, fontFamily: 'DMSans_700Bold' },
+  card:       { borderRadius: RADIUS.lg, overflow: 'hidden' },
+  cardMain:   { flexDirection: 'row', alignItems: 'center', gap: SPACE.md, padding: SPACE.md },
+  avatar:     { width: 40, height: 40, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  avatarText: { fontSize: TYPE.title.size-2, fontFamily: TYPE.family.bold },
   cardMid:    { flex: 1, minWidth: 0 },
-  cardName:   { fontSize: 14, fontFamily: 'DMSans_700Bold' },
-  cardNote:   { fontSize: 11, fontFamily: 'DMSans_400Regular', marginTop: 2 },
+  cardName:   { fontSize: TYPE.caption.size+1, fontFamily: TYPE.family.bold },
+  cardNote:   { fontSize: TYPE.label.size, fontFamily: TYPE.family.regular, marginTop: 2 },
   cardRight:  { alignItems: 'flex-end', flexShrink: 0 },
-  cardAmount: { fontSize: 16, fontFamily: 'DMSans_700Bold', letterSpacing: -0.4 },
-  cardTx:     { fontSize: 10, fontFamily: 'DMSans_400Regular', marginTop: 1 },
+  cardAmount: { fontSize: TYPE.title.size-2, fontFamily: TYPE.family.bold, letterSpacing: -0.4 },
+  cardTx:     { fontSize: TYPE.micro.size, fontFamily: TYPE.family.regular, marginTop: 1 },
 
   // Action strip
-  actionStrip:   { flexDirection: 'row', borderTopWidth: 0.5, paddingHorizontal: 4, paddingVertical: 2 },
-  actionBtn:     { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 8 },
-  actionBtnText: { fontSize: 11, fontFamily: 'DMSans_700Bold' },
+  actionStrip:   { flexDirection: 'row', borderTopWidth: 0.5, paddingHorizontal: SPACE.xs, paddingVertical: 2 },
+  actionBtn:     { flex: 1, alignItems: 'center', paddingVertical: SPACE.sm, borderRadius: RADIUS.xs+2 },
+  actionBtnText: { fontSize: TYPE.label.size, fontFamily: TYPE.family.bold },
 
   // Adjust panel
-  adjustPanel:  { borderTopWidth: 0.5, padding: 12 },
-  adjustInputs: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  adjustInput:  { flex: 1, borderWidth: 1.5, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, fontFamily: 'DMSans_400Regular' },
-  adjustBtns:   { flexDirection: 'row', gap: 8 },
-  adjustBtn:    { flex: 1, borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
-  adjustBtnText:{ fontSize: 12, fontFamily: 'DMSans_700Bold', color: '#fff' },
+  adjustPanel:  { borderTopWidth: 0.5, padding: RADIUS.md },
+  adjustInputs: { flexDirection: 'row', gap: SPACE.sm, marginBottom: SPACE.sm },
+  adjustInput:  { flex: 1, borderWidth: 1.5, borderRadius: RADIUS.xs+2, paddingHorizontal: 10, paddingVertical: SPACE.sm, fontSize: TYPE.caption.size, fontFamily: TYPE.family.regular },
+  adjustBtns:   { flexDirection: 'row', gap: SPACE.sm },
+  adjustBtn:    { flex: 1, borderRadius: RADIUS.xs+2, paddingVertical: 10, alignItems: 'center' },
+  adjustBtnText:{ fontSize: TYPE.micro.size+2, fontFamily: TYPE.family.bold, color: '#fff' },
 
   // Empty
   empty:     { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
-  emptyText: { fontSize: 14, fontFamily: 'DMSans_400Regular' },
+  emptyText: { fontSize: TYPE.caption.size+1, fontFamily: TYPE.family.regular },
 
   // Bottom sheet
   overlay:    { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet:      { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
-  handle:     { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
-  sheetHead:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 0.5 },
-  sheetTitle: { fontSize: 17, fontFamily: 'DMSans_700Bold', letterSpacing: -0.3 },
-  closeBtn:   { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  sheet:      { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg, overflow: 'hidden' },
+  handle:     { width: 40, height: 4, borderRadius: RADIUS.pill, alignSelf: 'center', marginTop: SPACE.md, marginBottom: SPACE.xs },
+  sheetHead:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACE.xl, paddingVertical: 14, borderBottomWidth: 0.5 },
+  sheetTitle: { fontSize: TYPE.body.size+2, fontFamily: TYPE.family.bold, letterSpacing: -0.3 },
+  closeBtn:   { width: 30, height: 30, borderRadius: RADIUS.pill, alignItems: 'center', justifyContent: 'center' },
 
   // Detail
-  detailHero:       { alignItems: 'center', paddingVertical: 16, marginBottom: 4 },
-  detailAvatar:     { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  detailAvatarText: { fontSize: 22, fontFamily: 'DMSans_700Bold' },
-  detailAmount:     { fontSize: 28, fontFamily: 'DMSans_700Bold', letterSpacing: -0.8 },
-  detailSub:        { fontSize: 13, fontFamily: 'DMSans_400Regular', marginTop: 4 },
-  txLogTitle:       { fontSize: 13, fontFamily: 'DMSans_700Bold', marginBottom: 8 },
-  txRow:            { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderRadius: 10 },
-  txNote:           { fontSize: 12, fontFamily: 'DMSans_700Bold' },
-  txDate:           { fontSize: 11, fontFamily: 'DMSans_400Regular', marginTop: 2 },
-  txAmount:         { fontSize: 13, fontFamily: 'DMSans_700Bold' },
-  deleteBtn:        { borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  deleteBtnText:    { fontSize: 13, fontFamily: 'DMSans_700Bold' },
+  detailHero:       { alignItems: 'center', paddingVertical: SPACE.lg, marginBottom: SPACE.xs },
+  detailAvatar:     { width: 56, height: 56, borderRadius: RADIUS.lg, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  detailAvatarText: { fontSize: 22, fontFamily: TYPE.family.bold },
+  detailAmount:     { fontSize: 28, fontFamily: TYPE.family.bold, letterSpacing: -0.8 },
+  detailSub:        { fontSize: TYPE.caption.size, fontFamily: TYPE.family.regular, marginTop: SPACE.xs },
+  txLogTitle:       { fontSize: TYPE.caption.size, fontFamily: TYPE.family.bold, marginBottom: SPACE.sm },
+  txRow:            { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: RADIUS.md, borderRadius: RADIUS.sm },
+  txNote:           { fontSize: TYPE.micro.size+2, fontFamily: TYPE.family.bold },
+  txDate:           { fontSize: TYPE.label.size, fontFamily: TYPE.family.regular, marginTop: 2 },
+  txAmount:         { fontSize: TYPE.caption.size, fontFamily: TYPE.family.bold },
+  deleteBtn:        { borderRadius: RADIUS.md, paddingVertical: 14, alignItems: 'center' },
+  deleteBtnText:    { fontSize: TYPE.caption.size, fontFamily: TYPE.family.bold },
 
   // Form
-  formHint:   { fontSize: 13, fontFamily: 'DMSans_400Regular', lineHeight: 20, marginBottom: 16 },
-  inputLabel: { fontSize: 11, fontFamily: 'DMSans_700Bold', letterSpacing: 0.6, marginBottom: 6 },
-  input:      { borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 15, fontFamily: 'DMSans_400Regular' },
-  btnRow:     { flexDirection: 'row', gap: 8 },
-  btn:        { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', justifyContent: 'center' },
-  btnText:    { fontSize: 14, fontFamily: 'DMSans_700Bold' },
+  formHint:   { fontSize: TYPE.caption.size, fontFamily: TYPE.family.regular, lineHeight: 20, marginBottom: SPACE.lg },
+  inputLabel: { fontSize: TYPE.label.size, fontFamily: TYPE.family.bold, letterSpacing: TYPE.label.ls, marginBottom: SPACE.sm-2 },
+  input:      { borderWidth: 1.5, borderRadius: RADIUS.sm, paddingHorizontal: SPACE.md, paddingVertical: 11, fontSize: TYPE.body.size, fontFamily: TYPE.family.regular },
+  btnRow:     { flexDirection: 'row', gap: SPACE.sm },
+  btn:        { flex: 1, borderRadius: RADIUS.md, paddingVertical: 13, alignItems: 'center', justifyContent: 'center' },
+  btnText:    { fontSize: TYPE.caption.size+1, fontFamily: TYPE.family.bold },
 
   // Share
-  shareHero:       { alignItems: 'center', paddingVertical: 20 },
-  shareName:       { fontSize: 14, fontFamily: 'DMSans_700Bold', marginBottom: 4 },
-  shareAmount:     { fontSize: 28, fontFamily: 'DMSans_700Bold', letterSpacing: -0.8 },
-  shareNote:       { fontSize: 12, fontFamily: 'DMSans_400Regular', marginTop: 4 },
-  sharePeople:     { borderRadius: 10, padding: 12, marginBottom: 16 },
-  sharePeopleLabel:{ fontSize: 10, fontFamily: 'DMSans_700Bold', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
-  sharePeopleRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  shareTag:        { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1 },
-  shareTagText:    { fontSize: 12, fontFamily: 'DMSans_700Bold' },
-  shareBtn:        { flexDirection: 'row', borderRadius: 12, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  shareBtnText:    { fontSize: 14, fontFamily: 'DMSans_700Bold', color: '#fff' },
-  sharePreview:    { borderRadius: 10, padding: 12 },
-  sharePreviewText:{ fontSize: 12, fontFamily: 'DMSans_400Regular', lineHeight: 18 },
+  shareHero:       { alignItems: 'center', paddingVertical: SPACE.xl },
+  shareName:       { fontSize: TYPE.caption.size+1, fontFamily: TYPE.family.bold, marginBottom: SPACE.xs },
+  shareAmount:     { fontSize: 28, fontFamily: TYPE.family.bold, letterSpacing: -0.8 },
+  shareNote:       { fontSize: TYPE.micro.size+2, fontFamily: TYPE.family.regular, marginTop: SPACE.xs },
+  sharePeople:     { borderRadius: RADIUS.sm, padding: RADIUS.md, marginBottom: SPACE.lg },
+  sharePeopleLabel:{ fontSize: TYPE.micro.size, fontFamily: TYPE.family.bold, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: SPACE.sm },
+  sharePeopleRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm-2 },
+  shareTag:        { borderRadius: RADIUS.xl, paddingHorizontal: 10, paddingVertical: SPACE.xs, borderWidth: 1 },
+  shareTagText:    { fontSize: TYPE.micro.size+2, fontFamily: TYPE.family.bold },
+  shareBtn:        { flexDirection: 'row', borderRadius: RADIUS.md, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', marginBottom: RADIUS.md },
+  shareBtnText:    { fontSize: TYPE.caption.size+1, fontFamily: TYPE.family.bold, color: '#fff' },
+  sharePreview:    { borderRadius: RADIUS.sm, padding: RADIUS.md },
+  sharePreviewText:{ fontSize: TYPE.micro.size+2, fontFamily: TYPE.family.regular, lineHeight: 18 },
 });

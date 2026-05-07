@@ -4,7 +4,7 @@
     "slug": "vaultic",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/valtiq-logo.png",
+    "icon": "./assets/adaptive-icon.png",
     "scheme": "vaultic",
     "userInterfaceStyle": "automatic",
     "splash": {
@@ -39,7 +39,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/valtiq-logo.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#4A9E76"
       },
       "package": "ai.vaultic.app",
@@ -48,7 +48,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/valtiq-logo.png"
+      "favicon": "./assets/adaptive-icon.png"
     },
     "plugins": [
       "expo-router",

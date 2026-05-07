@@ -10,6 +10,7 @@ import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { type Theme } from '@/lib/colors';
 import { useApp } from '@/lib/AppContext';
+import { RADIUS, SPACE, TYPE } from '@/lib/theme/tokens';
 import { useAssets } from '@/lib/hooks/useAssets';
 import { calcValue } from '@/lib/services/AssetService';
 import { CATEGORIES } from '@/lib/models/Category';
@@ -170,7 +171,7 @@ function SelectRow({ label, value, onPress, th }: { label: string; value: string
         onPress={onPress}
         style={({ pressed }) => [s.input, s.selectRow, { borderColor: th.bdr, backgroundColor: pressed ? th.hov : th.inp }]}
       >
-        <Text style={{ fontFamily: 'DMSans_400Regular', fontSize: 15, color: th.tx }}>{value}</Text>
+        <Text style={{ fontFamily: TYPE.family.regular, fontSize: 15, color: th.tx }}>{value}</Text>
         <Ionicons name="chevron-down" size={16} color={th.tx3} />
       </Pressable>
     </View>
@@ -384,7 +385,7 @@ function AssetForm({ initial, onSave, onCancel }: {
             { borderColor: showDatePicker ? th.acc : th.bdr, backgroundColor: pressed ? th.hov : th.inp },
           ]}
         >
-          <Text style={{ fontFamily: 'DMSans_400Regular', fontSize: 15, color: th.tx }}>
+          <Text style={{ fontFamily: TYPE.family.regular, fontSize: 15, color: th.tx }}>
             {dateLabel}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -698,76 +699,76 @@ const s = StyleSheet.create({
   root: { flex: 1 },
 
   // Header
-  header:       { flexDirection:'row', alignItems:'center', paddingHorizontal:20, paddingTop:20, paddingBottom:16, borderBottomWidth:0.5 },
-  headerTitle:  { fontSize:22, fontFamily:'DMSans_700Bold', letterSpacing:-0.6 },
-  headerSub:    { fontSize:13, fontFamily:'DMSans_400Regular', marginTop:1 },
-  headerBtns:   { flexDirection:'row', gap:8 },
-  headerBtn:    { borderRadius:20, paddingHorizontal:14, paddingVertical:7, borderWidth:1 },
-  headerBtnText:{ fontSize:12, fontFamily:'DMSans_700Bold' },
+  header:       { flexDirection:'row', alignItems:'center', paddingHorizontal:SPACE.xl, paddingTop:SPACE.xl, paddingBottom:SPACE.lg, borderBottomWidth:0.5 },
+  headerTitle:  { fontSize:22, fontFamily:TYPE.family.bold, letterSpacing:-0.6 },
+  headerSub:    { fontSize:TYPE.caption.size, fontFamily:TYPE.family.regular, marginTop:1 },
+  headerBtns:   { flexDirection:'row', gap:SPACE.sm },
+  headerBtn:    { borderRadius:RADIUS.xl, paddingHorizontal:SPACE.md, paddingVertical:7, borderWidth:1 },
+  headerBtnText:{ fontSize:TYPE.micro.size+2, fontFamily:TYPE.family.bold },
 
   // Filter bar
   filterBar:     { height:52, borderBottomWidth:0.5, justifyContent:'center' },
-  filterContent: { paddingHorizontal:16, gap:8, flexDirection:'row', alignItems:'center' },
-  chip:          { height:32, borderRadius:20, paddingHorizontal:14, justifyContent:'center', alignItems:'center' },
-  chipText:      { fontSize:12, fontFamily:'DMSans_700Bold', lineHeight:16 },
+  filterContent: { paddingHorizontal:SPACE.lg, gap:SPACE.sm, flexDirection:'row', alignItems:'center' },
+  chip:          { height:32, borderRadius:RADIUS.xl, paddingHorizontal:SPACE.md, justifyContent:'center', alignItems:'center' },
+  chipText:      { fontSize:TYPE.micro.size+2, fontFamily:TYPE.family.bold, lineHeight:16 },
 
   // Asset row
-  assetRow:      { borderRadius:14, padding:14, flexDirection:'row', alignItems:'center', gap:12 },
-  assetIcon:     { width:40, height:40, borderRadius:12, alignItems:'center', justifyContent:'center', flexShrink:0 },
-  assetIconText: { fontSize:18, fontFamily:'DMSans_700Bold' },
+  assetRow:      { borderRadius:RADIUS.lg, padding:SPACE.md, flexDirection:'row', alignItems:'center', gap:SPACE.md },
+  assetIcon:     { width:40, height:40, borderRadius:RADIUS.md, alignItems:'center', justifyContent:'center', flexShrink:0 },
+  assetIconText: { fontSize:TYPE.title.size, fontFamily:TYPE.family.bold },
   assetMid:      { flex:1, minWidth:0 },
-  assetName:     { fontSize:14, fontFamily:'DMSans_700Bold' },
-  assetSub:      { fontSize:11, fontFamily:'DMSans_400Regular', marginTop:2 },
+  assetName:     { fontSize:TYPE.caption.size+1, fontFamily:TYPE.family.bold },
+  assetSub:      { fontSize:TYPE.label.size, fontFamily:TYPE.family.regular, marginTop:2 },
   assetRight:    { alignItems:'flex-end', flexShrink:0 },
-  assetVal:      { fontSize:15, fontFamily:'DMSans_700Bold', letterSpacing:-0.4 },
-  assetPct:      { fontSize:11, fontFamily:'DMSans_400Regular' },
+  assetVal:      { fontSize:TYPE.body.size, fontFamily:TYPE.family.bold, letterSpacing:-0.4 },
+  assetPct:      { fontSize:TYPE.label.size, fontFamily:TYPE.family.regular },
 
   // Empty
   empty:     { flex:1, alignItems:'center', justifyContent:'center', paddingVertical:60 },
-  emptyText: { fontSize:14, fontFamily:'DMSans_400Regular' },
+  emptyText: { fontSize:TYPE.caption.size+1, fontFamily:TYPE.family.regular },
 
   // Bottom sheet
   overlay:     { ...StyleSheet.absoluteFillObject, backgroundColor:'rgba(0,0,0,0.4)' },
-  sheet:       { position:'absolute', bottom:0, left:0, right:0, borderTopLeftRadius:20, borderTopRightRadius:20, overflow:'hidden' },
-  sheetHandle: { width:40, height:4, borderRadius:2, alignSelf:'center', marginTop:10, marginBottom:4 },
-  sheetHeader: { flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:20, paddingVertical:14, borderBottomWidth:0.5 },
-  sheetTitle:  { fontSize:17, fontFamily:'DMSans_700Bold', letterSpacing:-0.3 },
-  sheetClose:  { width:30, height:30, borderRadius:15, alignItems:'center', justifyContent:'center' },
+  sheet:       { position:'absolute', bottom:0, left:0, right:0, borderTopLeftRadius:RADIUS.lg, borderTopRightRadius:RADIUS.lg, overflow:'hidden' },
+  sheetHandle: { width:40, height:4, borderRadius:RADIUS.pill, alignSelf:'center', marginTop:SPACE.md, marginBottom:SPACE.xs },
+  sheetHeader: { flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:SPACE.xl, paddingVertical:14, borderBottomWidth:0.5 },
+  sheetTitle:  { fontSize:TYPE.body.size+2, fontFamily:TYPE.family.bold, letterSpacing:-0.3 },
+  sheetClose:  { width:30, height:30, borderRadius:RADIUS.pill, alignItems:'center', justifyContent:'center' },
 
   // Picker sheet
-  pickerSheet:  { position:'absolute', bottom:0, left:0, right:0, borderTopLeftRadius:20, borderTopRightRadius:20 },
-  pickerTitle:  { fontSize:14, fontFamily:'DMSans_700Bold', textAlign:'center', paddingVertical:14, borderBottomWidth:0.5 },
-  pickerOpt:    { flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:20, paddingVertical:15, borderBottomWidth:0.5 },
-  pickerOptText:{ fontSize:15, fontFamily:'DMSans_400Regular' },
+  pickerSheet:  { position:'absolute', bottom:0, left:0, right:0, borderTopLeftRadius:RADIUS.lg, borderTopRightRadius:RADIUS.lg },
+  pickerTitle:  { fontSize:TYPE.caption.size+1, fontFamily:TYPE.family.bold, textAlign:'center', paddingVertical:SPACE.md, borderBottomWidth:0.5 },
+  pickerOpt:    { flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:SPACE.xl, paddingVertical:15, borderBottomWidth:0.5 },
+  pickerOptText:{ fontSize:TYPE.body.size, fontFamily:TYPE.family.regular },
 
   // Form
-  inputLabel: { fontSize:11, fontFamily:'DMSans_700Bold', textTransform:'uppercase', letterSpacing:0.6, marginBottom:6 },
-  input:      { borderWidth:1.5, borderRadius:10, paddingHorizontal:14, paddingVertical:11, fontSize:15, fontFamily:'DMSans_400Regular' },
+  inputLabel: { fontSize:TYPE.label.size, fontFamily:TYPE.family.bold, textTransform:'uppercase', letterSpacing:TYPE.label.ls, marginBottom:SPACE.sm-2 },
+  input:      { borderWidth:1.5, borderRadius:RADIUS.sm, paddingHorizontal:SPACE.md, paddingVertical:11, fontSize:TYPE.body.size, fontFamily:TYPE.family.regular },
   selectRow:  { flexDirection:'row', justifyContent:'space-between', alignItems:'center' },
-  liveHint:      { fontSize:12, fontFamily:'DMSans_700Bold', marginTop:-8, marginBottom:12 },
-  iosCalendar:   { borderRadius:12, borderWidth:0.5, overflow:'hidden', marginTop:6 },
-  pastBadge:     { borderRadius:8, paddingHorizontal:7, paddingVertical:2 },
-  pastBadgeText: { fontSize:10, fontFamily:'DMSans_700Bold' },
-  btnRow:     { flexDirection:'row', gap:8 },
-  btn:        { flex:1, borderRadius:12, paddingVertical:13, alignItems:'center', justifyContent:'center' },
-  btnText:    { fontSize:14, fontFamily:'DMSans_700Bold' },
+  liveHint:      { fontSize:TYPE.micro.size+2, fontFamily:TYPE.family.bold, marginTop:-8, marginBottom:SPACE.md },
+  iosCalendar:   { borderRadius:RADIUS.md, borderWidth:0.5, overflow:'hidden', marginTop:SPACE.sm-2 },
+  pastBadge:     { borderRadius:RADIUS.xs, paddingHorizontal:7, paddingVertical:2 },
+  pastBadgeText: { fontSize:TYPE.micro.size, fontFamily:TYPE.family.bold },
+  btnRow:     { flexDirection:'row', gap:SPACE.sm },
+  btn:        { flex:1, borderRadius:RADIUS.md, paddingVertical:13, alignItems:'center', justifyContent:'center' },
+  btnText:    { fontSize:TYPE.caption.size+1, fontFamily:TYPE.family.bold },
 
   // Detail
-  detailHero:      { alignItems:'center', paddingVertical:20 },
-  detailIcon:      { width:60, height:60, borderRadius:18, alignItems:'center', justifyContent:'center', marginBottom:12 },
-  detailValue:     { fontSize:28, fontFamily:'DMSans_700Bold', letterSpacing:-1 },
-  detailCat:       { fontSize:13, fontFamily:'DMSans_400Regular', marginTop:4 },
+  detailHero:      { alignItems:'center', paddingVertical:SPACE.xl },
+  detailIcon:      { width:60, height:60, borderRadius:SPACE.md+4, alignItems:'center', justifyContent:'center', marginBottom:SPACE.md },
+  detailValue:     { fontSize:28, fontFamily:TYPE.family.bold, letterSpacing:-1 },
+  detailCat:       { fontSize:TYPE.caption.size, fontFamily:TYPE.family.regular, marginTop:SPACE.xs },
   detailRow:       { flexDirection:'row', justifyContent:'space-between', paddingVertical:10, borderBottomWidth:0.5 },
-  detailRowLabel:  { fontSize:13, fontFamily:'DMSans_400Regular' },
-  detailRowValue:  { fontSize:13, fontFamily:'DMSans_700Bold' },
+  detailRowLabel:  { fontSize:TYPE.caption.size, fontFamily:TYPE.family.regular },
+  detailRowValue:  { fontSize:TYPE.caption.size, fontFamily:TYPE.family.bold },
 
   // History
-  histCard:      { borderRadius:14, padding:14, marginBottom:16 },
-  histStats:     { flexDirection:'row', justifyContent:'space-between', marginTop:8 },
-  histStatLabel: { fontSize:11, fontFamily:'DMSans_400Regular' },
-  histStatVal:   { fontSize:14, fontFamily:'DMSans_700Bold' },
-  histLogTitle:  { fontSize:13, fontFamily:'DMSans_700Bold', marginBottom:10 },
+  histCard:      { borderRadius:RADIUS.lg, padding:SPACE.md, marginBottom:SPACE.lg },
+  histStats:     { flexDirection:'row', justifyContent:'space-between', marginTop:SPACE.sm },
+  histStatLabel: { fontSize:TYPE.label.size, fontFamily:TYPE.family.regular },
+  histStatVal:   { fontSize:TYPE.caption.size+1, fontFamily:TYPE.family.bold },
+  histLogTitle:  { fontSize:TYPE.caption.size, fontFamily:TYPE.family.bold, marginBottom:SPACE.md-2 },
   histRow:       { flexDirection:'row', justifyContent:'space-between', paddingVertical:10, borderBottomWidth:0.5 },
-  histRowDate:   { fontSize:12, fontFamily:'DMSans_400Regular' },
-  histRowVal:    { fontSize:13, fontFamily:'DMSans_700Bold' },
+  histRowDate:   { fontSize:TYPE.micro.size+2, fontFamily:TYPE.family.regular },
+  histRowVal:    { fontSize:TYPE.caption.size, fontFamily:TYPE.family.bold },
 });
