@@ -4,7 +4,7 @@
     "slug": "vaultic",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/valtiq-logo.png",
     "scheme": "vaultic",
     "userInterfaceStyle": "automatic",
     "splash": {
@@ -18,14 +18,28 @@
       "buildNumber": "1",
       "infoPlist": {
         "CFBundleLocalizations": [
-          "en", "de", "ar", "tr", "sr", "bs", "hr",
-          "es", "fr", "nl", "zh-Hans", "hi", "ru", "id", "ms", "fa"
+          "en",
+          "de",
+          "ar",
+          "tr",
+          "sr",
+          "bs",
+          "hr",
+          "es",
+          "fr",
+          "nl",
+          "zh-Hans",
+          "hi",
+          "ru",
+          "id",
+          "ms",
+          "fa"
         ]
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/valtiq-logo.png",
         "backgroundColor": "#4A9E76"
       },
       "package": "com.vaultic.app",
@@ -34,13 +48,18 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/valtiq-logo.png"
     },
     "plugins": [
       "expo-router",
       "expo-font",
       "expo-asset",
-      ["expo-local-authentication", { "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for app-lock." }],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for app-lock."
+        }
+      ],
       "./plugins/withLocalizedAppName"
     ],
     "extra": {
