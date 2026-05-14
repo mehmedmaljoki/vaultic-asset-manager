@@ -36,61 +36,59 @@ function MigrationRunner({ children }: { children: React.ReactNode }) {
           AsyncStorage.getItem(LEGACY_KEYS.SETTINGS),
         ]);
 
-        await db.withTransactionAsync(async () => {
-          if (rawAssets) {
-            const assets: Asset[] = JSON.parse(rawAssets);
-            for (const a of assets) {
-              await db.runAsync(
-                `INSERT OR IGNORE INTO ${TABLES.ASSETS}
-                 (id, type, subtype, name, quantity, unit, value, purchased_at, created_at, updated_at)
-                 VALUES (?,?,?,?,?,?,?,?,?,?)`,
-                [a.id, a.type, a.subtype ?? null, a.name, a.quantity ?? null,
-                 a.unit ?? null, a.value ?? null, a.purchasedAt ?? null,
-                 a.createdAt, a.updatedAt ?? null]
-              );
-            }
+        if (rawAssets) {
+          const assets: Asset[] = JSON.parse(rawAssets);
+          for (const a of assets) {
+            await db.runAsync(
+              `INSERT OR IGNORE INTO ${TABLES.ASSETS}
+               (id, type, subtype, name, quantity, unit, value, purchased_at, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?)`,
+              [a.id, a.type, a.subtype ?? null, a.name, a.quantity ?? null,
+               a.unit ?? null, a.value ?? null, a.purchasedAt ?? null,
+               a.createdAt, a.updatedAt ?? null]
+            );
           }
+        }
 
-          if (rawDebts) {
-            const debts: Debt[] = JSON.parse(rawDebts);
-            for (const d of debts) {
+        if (rawDebts) {
+          const debts: Debt[] = JSON.parse(rawDebts);
+          for (const d of debts) {
+            await db.runAsync(
+              `INSERT OR IGNORE INTO ${TABLES.DEBTS}
+               (id, direction, name, amount, note, people, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?)`,
+              [d.id, d.direction, d.name, d.amount, d.note ?? null,
+               JSON.stringify(d.people ?? []), d.createdAt, d.updatedAt ?? null]
+            );
+            for (const tx of d.transactions ?? []) {
               await db.runAsync(
-                `INSERT OR IGNORE INTO ${TABLES.DEBTS}
-                 (id, direction, name, amount, note, people, created_at, updated_at)
-                 VALUES (?,?,?,?,?,?,?,?)`,
-                [d.id, d.direction, d.name, d.amount, d.note ?? null,
-                 JSON.stringify(d.people ?? []), d.createdAt, d.updatedAt ?? null]
+                `INSERT OR IGNORE INTO ${TABLES.DEBT_TRANSACTIONS}
+                 (id, debt_id, amount, date, note) VALUES (?,?,?,?,?)`,
+                [tx.id, d.id, tx.amount, tx.date, tx.note]
               );
-              for (const tx of d.transactions ?? []) {
-                await db.runAsync(
-                  `INSERT OR IGNORE INTO ${TABLES.DEBT_TRANSACTIONS}
-                   (id, debt_id, amount, date, note) VALUES (?,?,?,?,?)`,
-                  [tx.id, d.id, tx.amount, tx.date, tx.note]
-                );
-              }
             }
           }
+        }
 
-          if (rawHistory) {
-            const history: HistoryPoint[] = JSON.parse(rawHistory);
-            for (const h of history) {
-              await db.runAsync(
-                `INSERT OR IGNORE INTO ${TABLES.HISTORY} (date, total) VALUES (?,?)`,
-                [h.date, h.total]
-              );
-            }
+        if (rawHistory) {
+          const history: HistoryPoint[] = JSON.parse(rawHistory);
+          for (const h of history) {
+            await db.runAsync(
+              `INSERT OR IGNORE INTO ${TABLES.HISTORY} (date, total) VALUES (?,?)`,
+              [h.date, h.total]
+            );
           }
+        }
 
-          if (rawSettings) {
-            const settings = JSON.parse(rawSettings);
-            for (const [key, val] of Object.entries(settings)) {
-              await db.runAsync(
-                `INSERT OR REPLACE INTO ${TABLES.SETTINGS} (key, value) VALUES (?,?)`,
-                [key, JSON.stringify(val)]
-              );
-            }
+        if (rawSettings) {
+          const settings = JSON.parse(rawSettings);
+          for (const [key, val] of Object.entries(settings)) {
+            await db.runAsync(
+              `INSERT OR REPLACE INTO ${TABLES.SETTINGS} (key, value) VALUES (?,?)`,
+              [key, JSON.stringify(val)]
+            );
           }
-        });
+        }
 
         await AsyncStorage.setItem(MIGRATION_FLAG, '1');
       } catch (e) {
@@ -112,6 +110,7 @@ export default function DbProvider({ children }: Props) {
       databaseName={DB_NAME}
       onInit={applyMigrations}
       useSuspense={false}
+      onError={(e) => console.error('[DbProvider] SQLite init error:', e)}
     >
       <MigrationRunner>{children}</MigrationRunner>
     </SQLiteProvider>

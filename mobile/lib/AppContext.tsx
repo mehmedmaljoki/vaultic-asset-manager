@@ -67,10 +67,18 @@ function AppProviderInner({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      await applySystemDefaultsIfFirstLaunch(db);
-      const s = await dbGetSettings(db);
-      setSettings(s);
-      setLoaded(true);
+      let s = SETTINGS_DEFAULTS;
+      try {
+        console.log('[AppContext] loading settings...');
+        await applySystemDefaultsIfFirstLaunch(db);
+        s = await dbGetSettings(db);
+        setSettings(s);
+        console.log('[AppContext] settings loaded, onboardingDone:', s.onboardingDone);
+      } catch (e) {
+        console.error('[AppContext] settings load failed:', e);
+      } finally {
+        setLoaded(true);
+      }
       if (!s.lockOptInPromptShown && !s.lockEnabled) {
         try {
           const avail = await getLockAvailability();

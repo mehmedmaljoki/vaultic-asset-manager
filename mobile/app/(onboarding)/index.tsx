@@ -1,17 +1,13 @@
 import { useRef, useState } from 'react';
 import {
   View, Text, FlatList, Pressable, StyleSheet,
-  useWindowDimensions, I18nManager, Platform,
+  Animated, useWindowDimensions, I18nManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring, interpolate, Extrapolation,
-  type SharedValue,
-} from 'react-native-reanimated';
 import { useApp } from '@/lib/AppContext';
 import { IconTile } from '@/lib/components/IconTile';
-import { RADIUS, SPACE, MOTION } from '@/lib/theme/tokens';
+import { RADIUS, SPACE } from '@/lib/theme/tokens';
 import { typeStyle } from '@/lib/theme/typography';
 
 const SLIDES = [
@@ -23,12 +19,13 @@ const SLIDES = [
 ] as const;
 
 export default function OnboardingScreen() {
+  console.log('[Onboarding] rendering...');
   const { th, t, patchSettings, dir } = useApp();
   const { width } = useWindowDimensions();
   const router = useRouter();
   const flatRef = useRef<FlatList>(null);
   const [index, setIndex] = useState(0);
-  const progress = useSharedValue(0);
+  const dotAnimations = useRef(SLIDES.map((_, i) => new Animated.Value(i === 0 ? 1 : 0))).current;
 
   const isRTL = dir === 'rtl' || I18nManager.isRTL;
   const lastIndex = SLIDES.length - 1;
@@ -38,12 +35,24 @@ export default function OnboardingScreen() {
     router.replace('/(tabs)');
   }
 
+  function animateDots(next: number) {
+    const anims = SLIDES.map((_, i) =>
+      Animated.spring(dotAnimations[i], {
+        toValue: i === next ? 1 : 0,
+        useNativeDriver: false,
+        damping: 18,
+        stiffness: 220,
+      })
+    );
+    Animated.parallel(anims).start();
+  }
+
   function goNext() {
     if (index >= lastIndex) { finish(); return; }
     const next = index + 1;
     flatRef.current?.scrollToIndex({ index: next, animated: true });
     setIndex(next);
-    progress.value = withSpring(next, MOTION.spring);
+    animateDots(next);
   }
 
   return (
@@ -60,7 +69,7 @@ export default function OnboardingScreen() {
           const raw = Math.round(e.nativeEvent.contentOffset.x / width);
           const next = isRTL ? lastIndex - raw : raw;
           setIndex(next);
-          progress.value = withSpring(next, MOTION.spring);
+          animateDots(next);
         }}
         renderItem={({ item }) => (
           <Slide
@@ -83,7 +92,7 @@ export default function OnboardingScreen() {
         {/* Dots */}
         <View style={s.dots}>
           {SLIDES.map((_, i) => (
-            <Dot key={i} active={i === index} progress={progress} dotIndex={i} th={th} />
+            <Dot key={i} anim={dotAnimations[i]} th={th} />
           ))}
         </View>
 
@@ -123,31 +132,15 @@ function Slide({
   );
 }
 
-function Dot({
-  active, progress, dotIndex, th,
-}: { active: boolean; progress: SharedValue<number>; dotIndex: number; th: ReturnType<typeof useApp>['th'] }) {
-  const animStyle = useAnimatedStyle(() => {
-    const w = interpolate(
-      progress.value,
-      [dotIndex - 1, dotIndex, dotIndex + 1],
-      [8, 20, 8],
-      Extrapolation.CLAMP,
-    );
-    const opacity = interpolate(
-      progress.value,
-      [dotIndex - 1, dotIndex, dotIndex + 1],
-      [0.4, 1, 0.4],
-      Extrapolation.CLAMP,
-    );
-    return { width: w, opacity };
-  });
+function Dot({ anim, th }: { anim: Animated.Value; th: ReturnType<typeof useApp>['th'] }) {
+  const width = anim.interpolate({ inputRange: [0, 1], outputRange: [8, 20] });
+  const opacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] });
 
   return (
     <Animated.View
       style={[
         s.dot,
-        { backgroundColor: th.acc },
-        animStyle,
+        { backgroundColor: th.acc, width, opacity },
       ]}
     />
   );

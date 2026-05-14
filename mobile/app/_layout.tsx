@@ -1,5 +1,6 @@
+console.log('[_layout] module loading...');
 import { useEffect } from 'react';
-import { Stack, Redirect } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import {
@@ -16,10 +17,13 @@ SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
   const { isDark, settings } = useApp();
+  const router = useRouter();
 
-  if (!settings.onboardingDone) {
-    return <Redirect href={'/(onboarding)' as never} />;
-  }
+  useEffect(() => {
+    if (!settings.onboardingDone) {
+      router.replace('/(onboarding)' as never);
+    }
+  }, [settings.onboardingDone]);
 
   return (
     <>
@@ -33,17 +37,18 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     DMSans_400Regular,
     DMSans_500Medium,
     DMSans_700Bold,
   });
 
   useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync();
-  }, [fontsLoaded]);
+    console.log('[RootLayout] fontsLoaded:', fontsLoaded, 'fontError:', fontError);
+    if (fontsLoaded || fontError) SplashScreen.hideAsync();
+  }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
