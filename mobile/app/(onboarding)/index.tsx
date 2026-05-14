@@ -19,7 +19,6 @@ const SLIDES = [
 ] as const;
 
 export default function OnboardingScreen() {
-  console.log('[Onboarding] rendering...');
   const { th, t, patchSettings, dir } = useApp();
   const { width } = useWindowDimensions();
   const router = useRouter();
@@ -113,7 +112,6 @@ export default function OnboardingScreen() {
 function Slide({
   width, icon, title, body, th,
 }: { width: number; icon: string; title: string; body: string; th: ReturnType<typeof useApp>['th'] }) {
-  const { dir } = useApp();
   return (
     <View style={[s.slide, { width, paddingHorizontal: SPACE['3xl'] }]}>
       <IconTile

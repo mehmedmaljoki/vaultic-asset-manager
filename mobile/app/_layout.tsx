@@ -1,4 +1,3 @@
-console.log('[_layout] module loading...');
 import { useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -20,7 +19,9 @@ function RootNavigator() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!settings.onboardingDone) {
+    if (settings.onboardingDone) {
+      router.replace('/(tabs)' as never);
+    } else {
       router.replace('/(onboarding)' as never);
     }
   }, [settings.onboardingDone]);
@@ -44,7 +45,6 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    console.log('[RootLayout] fontsLoaded:', fontsLoaded, 'fontError:', fontError);
     if (fontsLoaded || fontError) SplashScreen.hideAsync();
   }, [fontsLoaded, fontError]);
 

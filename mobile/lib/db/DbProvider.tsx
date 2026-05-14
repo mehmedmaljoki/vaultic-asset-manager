@@ -110,7 +110,7 @@ export default function DbProvider({ children }: Props) {
       databaseName={DB_NAME}
       onInit={applyMigrations}
       useSuspense={false}
-      onError={(e) => console.error('[DbProvider] SQLite init error:', e)}
+
     >
       <MigrationRunner>{children}</MigrationRunner>
     </SQLiteProvider>
