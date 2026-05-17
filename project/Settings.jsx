@@ -397,8 +397,8 @@ function ContactSection({ th, t }) {
     {
       icon: '✉',
       label: 'Email',
-      value: 'hello@assetmanager.app',
-      action: () => window.open('mailto:hello@assetmanager.app?subject=Offline Asset Manager', '_blank'),
+      value: 'vaultic@eviq.at',
+      action: () => window.open('mailto:vaultic@eviq.at?subject=Offline Asset Manager', '_blank'),
       color: th.acc,
       bg: th.accBg,
     },

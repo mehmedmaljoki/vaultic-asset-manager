@@ -212,7 +212,7 @@ export default function SettingsScreen() {
     if (fbText.trim().length < 10) return;
     const subject = encodeURIComponent(`[${fbCat.toUpperCase()}] ${fbText.slice(0, 60)}`);
     const body    = encodeURIComponent(`Category: ${fbCat}\n\n${fbText}\n\n---\nSent from Vaultic (Expo)`);
-    await Linking.openURL(`mailto:hello@vaultic.app?subject=${subject}&body=${body}`).catch(() => {});
+    await Linking.openURL(`mailto:vaultic@eviq.at?subject=${subject}&body=${body}`).catch(() => {});
     setFbStatus('done');
   }
 
