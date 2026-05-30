@@ -60,7 +60,8 @@
           "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for app-lock."
         }
       ],
-      "./plugins/withLocalizedAppName"
+      "./plugins/withLocalizedAppName",
+      "./plugins/withPrivacyManifest"
     ],
     "extra": {
       "googleAndroidClientId": "",
