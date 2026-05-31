@@ -5,6 +5,7 @@ import {
   StyleSheet, Linking, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTabBarHeight } from '@/lib/hooks/useTabBarHeight';
 import { Ionicons } from '@expo/vector-icons';
 import { type Theme } from '@/lib/colors';
 import { useApp } from '@/lib/AppContext';
@@ -139,6 +140,7 @@ function PickerModal({
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function SettingsScreen() {
   const { th, t, settings, patchSettings, notifyDataChanged } = useApp();
+  const tabBarH = useTabBarHeight();
   const { status: backupStatus, handleExport, handleImport, handleClear: clearAll } = useBackup(notifyDataChanged);
   const cloud = useCloudBackup(notifyDataChanged);
 
@@ -221,7 +223,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={[s.root, { backgroundColor: th.bg }]} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: tabBarH + 24 }}>
 
         {/* ── Header ─────────────────────────────────────────────── */}
         <View style={[s.header, { backgroundColor: th.sur }]}>

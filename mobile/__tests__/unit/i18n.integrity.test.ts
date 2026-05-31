@@ -48,6 +48,17 @@ const NEW_KEYS = [
   'zakat_0_no_zakatable',
   'settings_lock_auth_failed',
   'settings_feedback_chars',
+  // Coin-picker keys
+  'asset_entry_mode_bar',
+  'asset_entry_mode_coin',
+  'asset_coin_country',
+  'asset_coin_select',
+  'asset_coin_count',
+  'asset_add_custom_coin',
+  'asset_coin_own_section',
+  'asset_coin_weight',
+  'asset_coin_alloy',
+  'asset_coin_weight_label',
 ];
 
 describe('i18n integrity', () => {

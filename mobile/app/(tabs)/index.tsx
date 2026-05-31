@@ -5,6 +5,7 @@ import {
   Modal, TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTabBarHeight } from '@/lib/hooks/useTabBarHeight';
 import Svg, {
   Path, Circle, Defs, LinearGradient, Stop, Text as SvgText,
 } from 'react-native-svg';
@@ -713,6 +714,7 @@ export default function DashboardScreen() {
   const { th, fmt, t, privacyMode, prices, priceSource, priceAgeMinutes, refreshPrices, fxRates } = useApp();
   const db     = useSQLiteContext();
   const router = useRouter();
+  const tabBarH = useTabBarHeight();
 
   const [showChart,     setShowChart]     = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -766,7 +768,7 @@ export default function DashboardScreen() {
       <ScrollView
         style={{ flex: 1, backgroundColor: th.bg }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: tabBarH + 32 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

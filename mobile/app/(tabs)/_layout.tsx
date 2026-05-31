@@ -1,12 +1,14 @@
 import { Tabs } from 'expo-router';
-import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '@/lib/AppContext';
+import { TAB_BAR_BASE_HEIGHT } from '@/lib/hooks/useTabBarHeight';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 export default function TabLayout() {
   const { th, t } = useApp();
+  const insets = useSafeAreaInsets();
 
   const TABS: { name: string; titleKey: string; icon: IoniconName; iconActive: IoniconName }[] = [
     { name: 'index',    titleKey: 'nav_overview', icon: 'grid-outline',    iconActive: 'grid' },
@@ -24,8 +26,8 @@ export default function TabLayout() {
           backgroundColor: th.sur,
           borderTopColor: th.bdr,
           borderTopWidth: 0.5,
-          height: Platform.OS === 'ios' ? 80 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          height: TAB_BAR_BASE_HEIGHT + insets.bottom,
+          paddingBottom: insets.bottom + 6,
           paddingTop: 8,
         },
         tabBarActiveTintColor:   th.acc,

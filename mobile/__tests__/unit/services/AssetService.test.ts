@@ -37,6 +37,23 @@ describe('calcValue', () => {
     const asset: Asset = { id: '6', type: 'metals', name: 'Unknown Metal', quantity: 5, createdAt: '' };
     expect(calcValue(asset, PRICES)).toBeNull();
   });
+
+  it('multiplies by gramsPerUnit for coin-type metals (pieces × gross weight × price × purity)', () => {
+    // 5 Çeyrek: 1.754 g gross, 916 fineness, gold = 100/g (PRICES.gold)
+    const asset: Asset = {
+      id: '7', type: 'metals', subtype: 'gold', name: 'Çeyrek',
+      quantity: 5, purity: 916, gramsPerUnit: 1.754, createdAt: '',
+    };
+    expect(calcValue(asset, PRICES)).toBeCloseTo(5 * 1.754 * 100 * 0.916);
+  });
+
+  it('treats missing gramsPerUnit as 1 (bars unaffected)', () => {
+    const asset: Asset = {
+      id: '8', type: 'metals', subtype: 'gold', name: 'Gold bar',
+      quantity: 10, purity: 916, createdAt: '',
+    };
+    expect(calcValue(asset, PRICES)).toBeCloseTo(10 * 100 * 0.916);
+  });
 });
 
 describe('getTotalWorth', () => {

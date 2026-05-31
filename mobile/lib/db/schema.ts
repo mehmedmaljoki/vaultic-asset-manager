@@ -10,6 +10,7 @@ export const TABLES = {
   SETTINGS:          'settings',
   PRICE_CACHE:       'price_cache',
   FX_CACHE:          'fx_cache',
+  CUSTOM_COINS:      'custom_coins',
 } as const;
 
 export async function applyMigrations(db: SQLiteDatabase): Promise<void> {
@@ -24,7 +25,9 @@ export async function applyMigrations(db: SQLiteDatabase): Promise<void> {
       name         TEXT NOT NULL,
       quantity     REAL,
       unit         TEXT,
-      value        REAL,
+      value          REAL,
+      coin_id        TEXT,
+      grams_per_unit REAL,
       purchased_at TEXT,
       created_at   TEXT NOT NULL,
       updated_at   TEXT
@@ -75,6 +78,15 @@ export async function applyMigrations(db: SQLiteDatabase): Promise<void> {
       fetched_at TEXT NOT NULL,
       PRIMARY KEY (base, currency)
     );
+
+    CREATE TABLE IF NOT EXISTS ${TABLES.CUSTOM_COINS} (
+      id             TEXT PRIMARY KEY NOT NULL,
+      name           TEXT NOT NULL,
+      metal          TEXT NOT NULL,
+      gross_weight_g REAL NOT NULL,
+      fineness       REAL NOT NULL,
+      created_at     TEXT NOT NULL
+    );
   `);
 
   // Additive: ensure 'currency' and 'purity' columns exist on older assets tables.
@@ -84,6 +96,12 @@ export async function applyMigrations(db: SQLiteDatabase): Promise<void> {
   }
   if (!cols.some(c => c.name === 'purity')) {
     await db.execAsync(`ALTER TABLE ${TABLES.ASSETS} ADD COLUMN purity REAL`);
+  }
+  if (!cols.some(c => c.name === 'coin_id')) {
+    await db.execAsync(`ALTER TABLE ${TABLES.ASSETS} ADD COLUMN coin_id TEXT`);
+  }
+  if (!cols.some(c => c.name === 'grams_per_unit')) {
+    await db.execAsync(`ALTER TABLE ${TABLES.ASSETS} ADD COLUMN grams_per_unit REAL`);
   }
 
   // Deduplicate history before adding the unique index (safe on first run — no-op if already clean).

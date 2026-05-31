@@ -13,6 +13,8 @@ function rowToAsset(row: Record<string, unknown>): Asset {
     value:       row.value != null ? (row.value as number) : undefined,
     currency:    (row.currency as string) ?? undefined,
     purity:      row.purity != null ? (row.purity as number) : undefined,
+    coinId:      (row.coin_id as string) ?? undefined,
+    gramsPerUnit: row.grams_per_unit != null ? (row.grams_per_unit as number) : undefined,
     purchasedAt: (row.purchased_at as string) ?? undefined,
     createdAt:   row.created_at as string,
     updatedAt:   (row.updated_at as string) ?? undefined,
@@ -29,11 +31,12 @@ export async function dbGetAssets(db: SQLiteDatabase): Promise<Asset[]> {
 export async function dbAddAsset(db: SQLiteDatabase, asset: Asset): Promise<void> {
   await db.runAsync(
     `INSERT INTO ${TABLES.ASSETS}
-     (id, type, subtype, name, quantity, unit, value, currency, purity, purchased_at, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+     (id, type, subtype, name, quantity, unit, value, currency, purity, coin_id, grams_per_unit, purchased_at, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [asset.id, asset.type, asset.subtype ?? null, asset.name,
      asset.quantity ?? null, asset.unit ?? null, asset.value ?? null,
      asset.currency ?? null, asset.purity ?? null,
+     asset.coinId ?? null, asset.gramsPerUnit ?? null,
      asset.purchasedAt ?? null, asset.createdAt, asset.updatedAt ?? null]
   );
 }
@@ -54,7 +57,9 @@ export async function dbUpdateAsset(
     ['unit',         data.unit],
     ['value',        data.value],
     ['currency',     data.currency],
-    ['purity',       data.purity],
+    ['purity',         data.purity],
+    ['coin_id',        data.coinId],
+    ['grams_per_unit', data.gramsPerUnit],
     ['purchased_at', data.purchasedAt],
     ['updated_at',   data.updatedAt],
   ];
@@ -81,8 +86,8 @@ export async function dbDeleteAsset(db: SQLiteDatabase, id: string): Promise<voi
 export async function dbUpsertAsset(db: SQLiteDatabase, asset: Asset): Promise<void> {
   await db.runAsync(
     `INSERT INTO ${TABLES.ASSETS}
-     (id, type, subtype, name, quantity, unit, value, currency, purity, purchased_at, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+     (id, type, subtype, name, quantity, unit, value, currency, purity, coin_id, grams_per_unit, purchased_at, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
      ON CONFLICT(id) DO UPDATE SET
        type=excluded.type,
        subtype=excluded.subtype,
@@ -92,11 +97,14 @@ export async function dbUpsertAsset(db: SQLiteDatabase, asset: Asset): Promise<v
        value=excluded.value,
        currency=excluded.currency,
        purity=excluded.purity,
+       coin_id=excluded.coin_id,
+       grams_per_unit=excluded.grams_per_unit,
        purchased_at=excluded.purchased_at,
        updated_at=excluded.updated_at`,
     [asset.id, asset.type, asset.subtype ?? null, asset.name,
      asset.quantity ?? null, asset.unit ?? null, asset.value ?? null,
      asset.currency ?? null, asset.purity ?? null,
+     asset.coinId ?? null, asset.gramsPerUnit ?? null,
      asset.purchasedAt ?? null, asset.createdAt, asset.updatedAt ?? null]
   );
 }

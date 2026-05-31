@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTabBarHeight } from '@/lib/hooks/useTabBarHeight';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { type Theme } from '@/lib/colors';
@@ -18,6 +19,14 @@ import { CURRENCIES } from '@/lib/models/Currency';
 import { formatCurrency } from '@/lib/utils/currency';
 import type { Asset } from '@/lib/models/Asset';
 import type { HistoryPoint } from '@/lib/models/History';
+import {
+  getCountries, getCoinsByCountry, coinToAssetFields,
+  OWN_COUNTRY_CODE, type CoinOption,
+} from '@/lib/services/CoinService';
+import { useCustomCoins } from '@/lib/hooks/useCustomCoins';
+import { COIN_CATALOG } from '@/lib/models/CoinCatalog';
+import { TROY_OZ_TO_GRAM } from '@/lib/models/PriceMap';
+import type { CustomCoin } from '@/lib/models/CustomCoin';
 
 const METAL_TYPES  = ['gold','silver','platinum','palladium'];
 const CRYPTO_TYPES = ['bitcoin','ethereum','solana','bnb'];
@@ -255,7 +264,7 @@ function AssetForm({ initial, onSave, onCancel }: {
   onCancel: () => void;
 }) {
   const { th, fmt, t, settings } = useApp();
-  const [type,       setType]       = useState<Asset['type']>(initial?.type ?? 'money');
+  const [type,       setType]       = useState<Asset['type']>(initial?.type ?? 'metals');
   const [name,       setName]       = useState(initial?.name ?? '');
   const [value,      setValue]      = useState(String(initial?.value ?? ''));
   const [quantity,   setQuantity]   = useState(String(initial?.quantity ?? ''));
@@ -285,6 +294,41 @@ function AssetForm({ initial, onSave, onCancel }: {
   const purityMul  = isMetals ? (purity / 1000) : 1;
   const liveVal    = livePrice && quantity ? (parseFloat(quantity) * livePrice * purityMul) : null;
 
+  const { customCoins, addCustomCoin } = useCustomCoins();
+  // Metals entry mode: 'bar' = grams + purity (existing), 'coin' = catalog/custom coin.
+  const [entryMode, setEntryMode] = useState<'bar' | 'coin'>(initial?.coinId ? 'coin' : 'bar');
+  // Derive the initial country from the coin being edited (catalog → its country,
+  // custom_ id → "Own", otherwise default to Turkey).
+  const initialCoinCountry =
+    (initial?.coinId && COIN_CATALOG.find(c => c.id === initial.coinId)?.countryCode)
+    || (initial?.coinId?.startsWith('custom_') ? OWN_COUNTRY_CODE : 'TR');
+  const [coinCountry, setCoinCountry] = useState<string>(initialCoinCountry);
+  const [coinId, setCoinId] = useState<string | undefined>(initial?.coinId ?? undefined);
+  const [coinCount, setCoinCount] = useState<string>(
+    initial?.coinId ? String(initial?.quantity ?? '') : '',
+  );
+  const [showCoinCountryPicker, setShowCoinCountryPicker] = useState(false);
+  const [showCoinPicker, setShowCoinPicker] = useState(false);
+  // Custom-coin mini-form
+  const [showCustomCoin, setShowCustomCoin] = useState(false);
+  const [ccName, setCcName] = useState('');
+  const [ccMetal, setCcMetal] = useState<'gold' | 'silver'>('gold');
+  const [ccWeight, setCcWeight] = useState('');
+  const [ccFineness, setCcFineness] = useState('999');
+
+  const countries = getCountries(customCoins);
+  const coinsForCountry = getCoinsByCountry(coinCountry, customCoins);
+  const selectedCoin: CoinOption | undefined =
+    getCoinsByCountry(coinCountry, customCoins).find(c => c.id === coinId)
+    ?? getCoinsByCountry(OWN_COUNTRY_CODE, customCoins).find(c => c.id === coinId);
+  const isCoinMode = isMetals && entryMode === 'coin';
+  const coinPrice = isCoinMode && selectedCoin
+    ? ((prices as Record<string, number | null | undefined>)[selectedCoin.metal] ?? null)
+    : null;
+  const coinLiveVal = isCoinMode && selectedCoin && coinCount && coinPrice
+    ? parseFloat(coinCount) * selectedCoin.grossWeightG * coinPrice * (selectedCoin.fineness / 1000)
+    : null;
+
   const catOptions = CATEGORIES.map(c => ({ value: c.id, label: t(c.nameKey) }));
   const subOptions = subtypeOpts.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }));
   const currOptions = CURRENCIES.map(c => ({ value: c.code, label: `${c.symbol}  ${c.code} — ${c.name}` }));
@@ -302,28 +346,81 @@ function AssetForm({ initial, onSave, onCancel }: {
   const isToday   = date.toDateString() === new Date().toDateString();
 
   function handleSave() {
+    // In coin mode the user must pick a coin; otherwise do nothing (avoid saving a bar-style asset).
+    if (isCoinMode && !selectedCoin) return;
     const cat          = CATEGORIES.find(c => c.id === type);
     const fallbackName = cat ? t(cat.nameKey) : type;
     const finalName    = name.trim() || fallbackName;
-    const data: Omit<Asset, 'id' | 'createdAt'> = {
-      type, name: finalName,
-      purchasedAt: date.toISOString(),
-      ...(needsSub
-        ? {
-            subtype,
-            quantity: parseFloat(quantity) || 0,
-            unit,
-            ...(isMetals ? { purity } : {}),
-          }
-        : { value: parseFloat(value) || 0, currency }),
-    };
+    let data: Omit<Asset, 'id' | 'createdAt'>;
+    if (isCoinMode && selectedCoin) {
+      data = {
+        ...(coinToAssetFields(selectedCoin, parseFloat(coinCount) || 0) as Omit<Asset, 'id' | 'createdAt'>),
+        name: name.trim() || selectedCoin.name,
+        purchasedAt: date.toISOString(),
+      };
+    } else {
+      data = {
+        type, name: finalName,
+        purchasedAt: date.toISOString(),
+        coinId: null, gramsPerUnit: null,
+        ...(needsSub
+          ? {
+              subtype,
+              quantity: parseFloat(quantity) || 0,
+              unit,
+              ...(isMetals ? { purity } : {}),
+            }
+          : { value: parseFloat(value) || 0, currency }),
+      };
+    }
     onSave(data);
+  }
+
+  async function handleSaveCustomCoin() {
+    const w = parseFloat(ccWeight);
+    const f = parseFloat(ccFineness);
+    if (!ccName.trim() || !w || !f) return;
+    const coin: CustomCoin = {
+      id: `custom_${Date.now()}`,
+      name: ccName.trim(),
+      metal: ccMetal,
+      grossWeightG: w,
+      fineness: f,
+      createdAt: new Date().toISOString(),
+    };
+    await addCustomCoin(coin);
+    setCoinCountry(OWN_COUNTRY_CODE);
+    setCoinId(coin.id);
+    setShowCustomCoin(false);
+    setCcName(''); setCcWeight(''); setCcFineness('999'); setCcMetal('gold');
   }
 
   return (
     <View>
       <SelectRow label={t('asset_category')} value={selectedCat} onPress={() => setShowCatPicker(true)} th={th} />
-      {needsSub && (
+      {isMetals && (
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+          {(['bar', 'coin'] as const).map(m => (
+            <Pressable
+              key={m}
+              onPress={() => setEntryMode(m)}
+              style={[
+                s.modeChip,
+                { backgroundColor: entryMode === m ? th.acc : th.hov, borderColor: th.bdr },
+              ]}
+            >
+              <Text style={{
+                fontFamily: TYPE.family.bold, fontSize: 13,
+                color: entryMode === m ? '#fff' : th.tx2,
+              }}>
+                {m === 'bar' ? t('asset_entry_mode_bar') : t('asset_entry_mode_coin')}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {needsSub && !isCoinMode && (
         <SelectRow
           label={type === 'metals' ? t('asset_metal_type') : t('asset_coin')}
           value={selectedSub}
@@ -331,6 +428,38 @@ function AssetForm({ initial, onSave, onCancel }: {
           th={th}
         />
       )}
+
+      {isCoinMode && (
+        <View>
+          <SelectRow
+            label={t('asset_coin_country')}
+            value={countries.find(c => c.code === coinCountry)?.name ?? '—'}
+            onPress={() => setShowCoinCountryPicker(true)}
+            th={th}
+          />
+          <SelectRow
+            label={t('asset_coin_select')}
+            value={selectedCoin?.name ?? '—'}
+            onPress={() => setShowCoinPicker(true)}
+            th={th}
+          />
+          {selectedCoin && (
+            <View style={[s.coinInfo, { backgroundColor: th.sur2, borderColor: th.bdr }]}>
+              <View style={s.coinInfoRow}>
+                <Text style={[s.coinInfoKey, { color: th.tx3 }]}>{t('asset_coin_alloy')}</Text>
+                <Text style={[s.coinInfoVal, { color: th.tx }]}>{selectedCoin.alloy}</Text>
+              </View>
+              <View style={s.coinInfoRow}>
+                <Text style={[s.coinInfoKey, { color: th.tx3 }]}>{t('asset_coin_weight_label')}</Text>
+                <Text style={[s.coinInfoVal, { color: th.tx }]}>
+                  {selectedCoin.grossWeightG} g · {(selectedCoin.grossWeightG / TROY_OZ_TO_GRAM).toFixed(3)} oz
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+
       <AppInput
         label={t('asset_name_optional')}
         value={name}
@@ -338,7 +467,21 @@ function AssetForm({ initial, onSave, onCancel }: {
         placeholder={t('asset_name_placeholder')}
         th={th}
       />
-      {needsSub ? (
+
+      {isCoinMode ? (
+        <View>
+          <AppInput
+            label={t('asset_coin_count')}
+            value={coinCount} onChangeText={setCoinCount}
+            placeholder="0" keyboardType="number-pad" th={th}
+          />
+          {coinLiveVal != null && (
+            <Text style={[s.liveHint, { color: th.acc }]}>
+              ≈ {fmt(coinLiveVal)}
+            </Text>
+          )}
+        </View>
+      ) : needsSub ? (
         <View>
           <AppInput
             label={`${t('asset_quantity')} (${unit})`}
@@ -458,6 +601,59 @@ function AssetForm({ initial, onSave, onCancel }: {
         title={t('asset_currency')}
         options={currOptions} value={currency} onChange={setCurrency} th={th}
       />
+      <PickerSheet
+        visible={showCoinCountryPicker} onClose={() => setShowCoinCountryPicker(false)}
+        title={t('asset_coin_country')}
+        options={countries.map(c => ({
+          value: c.code,
+          label: c.code === OWN_COUNTRY_CODE ? t('asset_coin_own_section') : c.name,
+        }))}
+        value={coinCountry}
+        onChange={(v) => { setCoinCountry(v); setCoinId(undefined); }}
+        th={th}
+      />
+      <PickerSheet
+        visible={showCoinPicker} onClose={() => setShowCoinPicker(false)}
+        title={t('asset_coin_select')}
+        options={[
+          ...(coinCountry === OWN_COUNTRY_CODE
+            ? [{ value: '__add__', label: t('asset_add_custom_coin') }]
+            : []),
+          ...coinsForCountry.map(c => ({ value: c.id, label: c.name })),
+        ]}
+        value={coinId ?? ''}
+        onChange={(v) => {
+          if (v === '__add__') { setShowCoinPicker(false); setShowCustomCoin(true); return; }
+          setCoinId(v);
+        }}
+        th={th}
+      />
+
+      <Modal visible={showCustomCoin} transparent animationType="slide" onRequestClose={() => setShowCustomCoin(false)}>
+        <Pressable style={s.modalBackdrop} onPress={() => setShowCustomCoin(false)} />
+        <View style={[s.pickerSheet, { backgroundColor: th.sur }]}>
+          <Text style={[s.inputLabel, { color: th.tx, fontSize: 16, marginBottom: 12 }]}>
+            {t('asset_add_custom_coin')}
+          </Text>
+          <AppInput label={t('asset_name_optional')} value={ccName} onChangeText={setCcName} placeholder="—" th={th} />
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+            {(['gold', 'silver'] as const).map(m => (
+              <Pressable key={m} onPress={() => setCcMetal(m)}
+                style={[s.modeChip, { backgroundColor: ccMetal === m ? th.acc : th.hov, borderColor: th.bdr }]}>
+                <Text style={{ color: ccMetal === m ? '#fff' : th.tx2, fontFamily: TYPE.family.bold, fontSize: 13 }}>
+                  {m === 'gold' ? 'Gold' : 'Silver'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <AppInput label={t('asset_coin_weight')} value={ccWeight} onChangeText={setCcWeight} placeholder="0.00" keyboardType="decimal-pad" th={th} />
+          <AppInput label={t('asset_purity')} value={ccFineness} onChangeText={setCcFineness} placeholder="999" keyboardType="decimal-pad" th={th} />
+          <View style={[s.btnRow, { marginTop: 8 }]}>
+            <ActionBtn label={t('asset_cancel')} variant="ghost" onPress={() => setShowCustomCoin(false)} th={th} />
+            <ActionBtn label={t('asset_save')} variant="primary" onPress={handleSaveCustomCoin} th={th} />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -539,6 +735,7 @@ function fmtDate(iso: string): string {
 export default function AssetsScreen() {
   const { th, fmt, t, privacyMode, prices, fxRates, settings } = useApp();
   const blur = privacyMode ? '••••' : null;
+  const tabBarH = useTabBarHeight();
 
   const { assets, history, totalWorth, handleAdd, handleUpdate, handleDelete } = useAssets(prices, fxRates);
 
@@ -621,7 +818,7 @@ export default function AssetsScreen() {
       <FlatList
         data={filtered}
         keyExtractor={a => a.id}
-        contentContainerStyle={{ padding: 12, gap: 8, flexGrow: 1 }}
+        contentContainerStyle={{ padding: 12, gap: 8, flexGrow: 1, paddingBottom: tabBarH + 16 }}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={s.empty}>
@@ -752,6 +949,12 @@ const s = StyleSheet.create({
   btnRow:     { flexDirection:'row', gap:SPACE.sm },
   btn:        { flex:1, borderRadius:RADIUS.md, paddingVertical:13, alignItems:'center', justifyContent:'center' },
   btnText:    { fontSize:TYPE.caption.size+1, fontFamily:TYPE.family.bold },
+  modeChip:   { flex: 1, paddingVertical: 10, borderRadius: RADIUS.md, borderWidth: 0.5, alignItems: 'center' },
+  coinInfo:   { borderRadius: RADIUS.md, borderWidth: 0.5, padding: 12, marginBottom: 14, gap: 6 },
+  coinInfoRow:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  coinInfoKey:{ fontFamily: TYPE.family.regular, fontSize: 13 },
+  coinInfoVal:{ fontFamily: TYPE.family.bold, fontSize: 13 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
 
   // Detail
   detailHero:      { alignItems:'center', paddingVertical:SPACE.xl },

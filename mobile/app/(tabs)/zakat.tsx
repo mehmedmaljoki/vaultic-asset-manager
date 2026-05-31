@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, Pressable, Modal, StyleSheet,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTabBarHeight } from '@/lib/hooks/useTabBarHeight';
 import { Ionicons } from '@expo/vector-icons';
 import { type Theme } from '@/lib/colors';
 import { useApp } from '@/lib/AppContext';
@@ -82,6 +83,7 @@ function InfoSheet({ visible, onClose, th }: { visible: boolean; onClose: () => 
 export default function ZakatScreen() {
   const { th, fmt, t, language, privacyMode, prices, fxRates } = useApp();
   const blur = privacyMode ? '••••' : null;
+  const tabBarH = useTabBarHeight();
 
   const { assets } = useAssets(prices, fxRates);
   const { debts }  = useDebts();
@@ -157,7 +159,7 @@ export default function ZakatScreen() {
     <SafeAreaView style={[s.root, { backgroundColor: th.bg }]} edges={['top']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: tabBarH + 32 }}
       >
         {/* ── Header ─────────────────────────────────────────────── */}
         <View style={[s.header, { backgroundColor: th.sur }]}>

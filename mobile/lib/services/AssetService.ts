@@ -19,8 +19,9 @@ export function calcValue(
     if (price == null) return null;
     const qty = asset.quantity ?? 0;
     if (asset.type === 'metals') {
-      const purity = asset.purity ?? 1000;       // millesimal; default = pure
-      return qty * price * (purity / 1000);
+      const purity = asset.purity ?? 1000;        // millesimal; default = pure
+      const perUnitG = asset.gramsPerUnit ?? 1;   // coins: gross g/piece; bars: undefined → 1 (qty is grams)
+      return qty * perUnitG * price * (purity / 1000);
     }
     return qty * price;
   }

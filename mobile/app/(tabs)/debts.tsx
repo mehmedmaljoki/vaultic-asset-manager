@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView, Platform, Share,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTabBarHeight } from '@/lib/hooks/useTabBarHeight';
 import { Ionicons } from '@expo/vector-icons';
 import { type Theme } from '@/lib/colors';
 import { useApp } from '@/lib/AppContext';
@@ -364,6 +365,7 @@ function ShareSheet({ debt, th, onClose }: { debt: Debt; th: Theme; onClose: () 
 export default function DebtsScreen() {
   const { th, fmt, t, privacyMode } = useApp();
   const blur = privacyMode ? '••••' : null;
+  const tabBarH = useTabBarHeight();
 
   const {
     debts, totOwed, totIowe,
@@ -446,7 +448,7 @@ export default function DebtsScreen() {
       <FlatList
         data={current}
         keyExtractor={d => d.id}
-        contentContainerStyle={{ padding: 12, gap: 8, flexGrow: 1 }}
+        contentContainerStyle={{ padding: 12, gap: 8, flexGrow: 1, paddingBottom: tabBarH + 16 }}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={s.empty}>
