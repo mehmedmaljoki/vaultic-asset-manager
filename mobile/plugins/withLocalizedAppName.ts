@@ -1,9 +1,14 @@
-const { withInfoPlist, withDangerousMod } = require('@expo/config-plugins');
-const path = require('path');
-const fs   = require('fs');
+import { type ConfigPlugin, withInfoPlist, withDangerousMod } from 'expo/config-plugins';
+import * as path from 'path';
+import * as fs from 'fs';
 
 // Brand name is universal — localization infrastructure enables correct OS behaviour
-// (Spotlight, Siri, Settings app, App Store language matching)
+// (Spotlight, Siri, Settings app, App Store language matching).
+//
+// NOTE: this is intentionally NOT replaced by Expo's built-in `locales` config:
+// `locales` localizes system-dialog/permission strings, not the app display name
+// (CFBundleDisplayName on iOS, app_name on Android). This plugin localizes the
+// display name across all supported locales, which `locales` does not cover.
 const APP_NAME = 'Vaultic';
 
 const IOS_LOCALES = [
@@ -11,13 +16,13 @@ const IOS_LOCALES = [
   'es', 'fr', 'nl', 'zh-Hans', 'hi', 'ru', 'id', 'ms', 'fa',
 ];
 
-// Android resource folder suffixes (BCP-47 where needed)
+// Android resource folder suffixes (BCP-47 where needed).
 const ANDROID_LOCALES = [
   'en', 'de', 'ar', 'tr', 'sr', 'b+bs', 'hr',
   'es', 'fr', 'nl', 'b+zh+Hans', 'hi', 'ru', 'id', 'ms', 'fa',
 ];
 
-function withIosLocalizedName(config) {
+const withIosLocalizedName: ConfigPlugin = (config) => {
   // 1. Declare supported localizations in Info.plist
   config = withInfoPlist(config, (cfg) => {
     cfg.modResults.CFBundleLocalizations = IOS_LOCALES;
@@ -29,8 +34,8 @@ function withIosLocalizedName(config) {
     'ios',
     (cfg) => {
       const projectRoot = cfg.modRequest.platformProjectRoot;
-      const projectName = cfg.modRequest.projectName;
-      const iosDir      = path.join(projectRoot, projectName);
+      const projectName = cfg.modRequest.projectName ?? '';
+      const iosDir = path.join(projectRoot, projectName);
 
       for (const locale of IOS_LOCALES) {
         const lprojDir = path.join(iosDir, `${locale}.lproj`);
@@ -46,10 +51,10 @@ function withIosLocalizedName(config) {
   ]);
 
   return config;
-}
+};
 
-function withAndroidLocalizedName(config) {
-  return withDangerousMod(config, [
+const withAndroidLocalizedName: ConfigPlugin = (config) =>
+  withDangerousMod(config, [
     'android',
     (cfg) => {
       const resDir = path.join(
@@ -69,10 +74,11 @@ function withAndroidLocalizedName(config) {
       return cfg;
     },
   ]);
-}
 
-module.exports = function withLocalizedAppName(config) {
+const withLocalizedAppName: ConfigPlugin = (config) => {
   config = withIosLocalizedName(config);
   config = withAndroidLocalizedName(config);
   return config;
 };
+
+export default withLocalizedAppName;

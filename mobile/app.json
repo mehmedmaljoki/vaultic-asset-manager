@@ -16,6 +16,17 @@
       "supportsTablet": false,
       "bundleIdentifier": "ai.vaultic.app",
       "buildNumber": "2",
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyTrackingDomains": [],
+        "NSPrivacyCollectedDataTypes": [],
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleLocalizations": [
@@ -66,7 +77,6 @@
         }
       ],
       "./plugins/withLocalizedAppName",
-      "./plugins/withPrivacyManifest",
       "./plugins/withAppDelegatePublicAccess"
     ],
     "extra": {

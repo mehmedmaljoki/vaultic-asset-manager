@@ -1,6 +1,6 @@
-const { withDangerousMod } = require('@expo/config-plugins');
-const fs = require('fs');
-const path = require('path');
+import { type ConfigPlugin, withDangerousMod } from 'expo/config-plugins';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Removes 'public' access modifiers from the generated AppDelegate.swift.
@@ -8,14 +8,17 @@ const path = require('path');
  * Required for Xcode 26+ (Swift 6): using types from implicitly-internal module
  * imports (e.g. `import Expo`) in a `public class` declaration is now an error.
  * AppDelegate doesn't need to be public — it's the app's own entry point.
+ *
+ * NOTE: Re-evaluate after a real iOS build on SDK 56 (Phase 5 / EAS). If SDK 56's
+ * Swift AppDelegate template no longer emits `public`, this plugin can be deleted.
  */
-module.exports = function withAppDelegatePublicAccess(config) {
-  return withDangerousMod(config, [
+const withAppDelegatePublicAccess: ConfigPlugin = (config) =>
+  withDangerousMod(config, [
     'ios',
     (cfg) => {
       const appDelegatePath = path.join(
         cfg.modRequest.platformProjectRoot,
-        cfg.modRequest.projectName,
+        cfg.modRequest.projectName ?? '',
         'AppDelegate.swift',
       );
 
@@ -35,4 +38,5 @@ module.exports = function withAppDelegatePublicAccess(config) {
       return cfg;
     },
   ]);
-};
+
+export default withAppDelegatePublicAccess;

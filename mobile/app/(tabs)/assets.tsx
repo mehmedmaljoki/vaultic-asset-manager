@@ -4,7 +4,7 @@ import {
   Modal, Animated, StyleSheet, useWindowDimensions,
   TouchableOpacity, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '@expo/ui/community/datetime-picker';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTabBarHeight } from '@/lib/hooks/useTabBarHeight';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
@@ -549,7 +549,7 @@ function AssetForm({ initial, onSave, onCancel }: {
               mode="date"
               display="inline"
               maximumDate={new Date()}
-              onChange={(_, selected) => { if (selected) setDate(selected); }}
+              onValueChange={(_, selected) => setDate(selected)}
               accentColor={th.acc}
               style={{ width: '100%' }}
             />
@@ -561,10 +561,7 @@ function AssetForm({ initial, onSave, onCancel }: {
             mode="date"
             display="default"
             maximumDate={new Date()}
-            onChange={(_, selected) => {
-              setShowDatePicker(false);
-              if (selected) setDate(selected);
-            }}
+            onValueChange={(_, selected) => { setShowDatePicker(false); setDate(selected); }}
           />
         )}
       </View>
@@ -925,7 +922,7 @@ const s = StyleSheet.create({
   emptyText: { fontSize:TYPE.caption.size+1, fontFamily:TYPE.family.regular },
 
   // Bottom sheet
-  overlay:     { ...StyleSheet.absoluteFillObject, backgroundColor:'rgba(0,0,0,0.4)' },
+  overlay:     { ...StyleSheet.absoluteFill, backgroundColor:'rgba(0,0,0,0.4)' },
   sheet:       { position:'absolute', bottom:0, left:0, right:0, borderTopLeftRadius:RADIUS.lg, borderTopRightRadius:RADIUS.lg, overflow:'hidden' },
   sheetHandle: { width:40, height:4, borderRadius:RADIUS.pill, alignSelf:'center', marginTop:SPACE.md, marginBottom:SPACE.xs },
   sheetHeader: { flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:SPACE.xl, paddingVertical:14, borderBottomWidth:0.5 },

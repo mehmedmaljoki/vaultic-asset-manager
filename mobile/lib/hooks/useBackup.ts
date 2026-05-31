@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { exportData, importData, clearAllData } from '../services/BackupService';
 import { applySystemDefaults } from '../services/SystemDefaultsService';
@@ -34,9 +34,11 @@ export function useBackup(onDataChanged?: () => Promise<void>): UseBackupResult 
       const json = await exportData(db);
       const ts   = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 16);
       if (Platform.OS !== 'web') {
-        const path = `${FileSystem.cacheDirectory ?? ''}oam_backup_${ts}.json`;
-        await FileSystem.writeAsStringAsync(path, json, { encoding: FileSystem.EncodingType.UTF8 });
-        await Sharing.shareAsync(path, {
+        const file = new File(Paths.cache, `oam_backup_${ts}.json`);
+        if (file.exists) file.delete();
+        file.create();
+        file.write(json);
+        await Sharing.shareAsync(file.uri, {
           mimeType:    'application/json',
           dialogTitle: 'Vaultic Backup',
           UTI:         'public.json',
@@ -61,8 +63,7 @@ export function useBackup(onDataChanged?: () => Promise<void>): UseBackupResult 
         setStatus('idle');
         return false;
       }
-      const res  = await fetch(result.assets[0].uri);
-      const json = await res.text();
+      const json = await new File(result.assets[0].uri).text();
       const out  = await importData(db, json);
       setStatus(out.ok ? 'success' : 'error');
       if (out.ok) await onDataChanged?.();

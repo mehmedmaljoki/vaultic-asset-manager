@@ -20,9 +20,9 @@ function RootNavigator() {
 
   useEffect(() => {
     if (settings.onboardingDone) {
-      router.replace('/(tabs)' as never);
+      router.replace('/(tabs)');
     } else {
-      router.replace('/(onboarding)' as never);
+      router.replace('/(onboarding)');
     }
   }, [settings.onboardingDone]);
 

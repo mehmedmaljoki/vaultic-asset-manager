@@ -3,7 +3,7 @@ import { TROY_OZ_TO_GRAM } from '../../../lib/models/PriceMap';
 
 // ── Mock fetch globally ───────────────────────────────────────────────────────
 const mockFetch = jest.fn();
-global.fetch = mockFetch;
+globalThis.fetch = mockFetch;
 
 // ── Mock PriceCacheRepository ─────────────────────────────────────────────────
 const mockGetCache  = jest.fn();
