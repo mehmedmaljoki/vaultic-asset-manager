@@ -17,7 +17,9 @@ import { SETTINGS_DEFAULTS, type Settings } from './models/Settings';
 import { usePrices, type UsePricesResult } from './hooks/usePrices';
 import { useFxRates } from './hooks/useFxRates';
 import { dbGetAssets } from './repositories/AssetRepository';
-import { dbGetHistory, dbUpsertDailyHistory } from './repositories/HistoryRepository';
+import { dbGetHistory, dbUpsertDailyHistory, dbInsertHistoryBatch } from './repositories/HistoryRepository';
+import { fetchHistory, COINGECKO_HISTORY_IDS } from './services/HistoricalPriceService';
+import { buildBackfillSeries } from './services/HistoryBackfillService';
 import { getTotalWorth } from './services/AssetService';
 import { shouldSnapshotToday } from './services/HistoryService';
 import type { LivePrices } from './models/PriceMap';
@@ -136,6 +138,48 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       }
     })();
   }, [db, priceResult.prices, fxResult.rates]);
+
+  const backfillRan = useRef(false);
+  useEffect(() => {
+    const prices = priceResult.prices;
+    if (backfillRan.current) return;
+    if (settings.historyBackfilledAt) return;             // already done
+    if (!prices || Object.keys(prices).length === 0) return;
+    backfillRan.current = true;
+    (async () => {
+      try {
+        const assets = await dbGetAssets(db);
+        if (assets.length === 0) {
+          await patchSettings({ historyBackfilledAt: new Date().toISOString() });
+          return;
+        }
+        // Earliest acquisition → today, as an ascending day list.
+        const earliest = assets
+          .map(a => (a.purchasedAt ?? a.createdAt).slice(0, 10))
+          .sort()[0];
+        const days: string[] = [];
+        const cur = new Date(earliest + 'T00:00:00.000Z');
+        const today = new Date();
+        while (cur <= today) {
+          days.push(cur.toISOString().slice(0, 10));
+          cur.setUTCDate(cur.getUTCDate() + 1);
+        }
+        const span = days.length;
+        // CoinGecko free tier returns up to ~365 daily points without a key.
+        const fetchDays = Math.min(span, 365);
+        const histByKey: Record<string, Record<string, number>> = {};
+        const keys = Object.keys(COINGECKO_HISTORY_IDS) as (keyof typeof COINGECKO_HISTORY_IDS)[];
+        for (const key of keys) {
+          histByKey[key] = await fetchHistory(key as never, settings.currency, fetchDays);
+        }
+        const series = buildBackfillSeries(assets, days, histByKey as never, prices, fxResult.rates ?? {});
+        await dbInsertHistoryBatch(db, series);
+        await patchSettings({ historyBackfilledAt: new Date().toISOString() });
+      } catch {
+        backfillRan.current = false;   // allow retry next launch on failure
+      }
+    })();
+  }, [db, priceResult.prices, settings.historyBackfilledAt, settings.currency, fxResult.rates]);
 
   const { locked, unlock } = useAppLock(settings.lockEnabled);
 

@@ -17,6 +17,8 @@ export interface Settings {
   gdriveAccessToken: string;
   gdriveRefreshToken: string;
   gdriveExpiresAt: number;
+  /** ISO timestamp set once the one-time historical backfill has run ('' = not yet). */
+  historyBackfilledAt: string;
 }
 
 export const SETTINGS_DEFAULTS: Settings = {
@@ -33,4 +35,5 @@ export const SETTINGS_DEFAULTS: Settings = {
   gdriveAccessToken:    '',
   gdriveRefreshToken:   '',
   gdriveExpiresAt:      0,
+  historyBackfilledAt:  '',
 };
