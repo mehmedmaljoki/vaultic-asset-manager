@@ -1,7 +1,7 @@
 # CLAUDE.md — Offline Asset Manager
 
 ## Project Overview
-Cross-platform React Native app (iOS, Android, Web) built with Expo SDK 54 and Expo Router v6.
+Cross-platform React Native app (iOS, Android, Web) built with Expo SDK 56 and Expo Router v6.
 Fully offline, local-first using SQLite (`expo-sqlite`). No backend.
 
 ## Architecture — Four-Layer MVC
