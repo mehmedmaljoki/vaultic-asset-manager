@@ -1,5 +1,5 @@
 import {
-  createContext, useContext, useState, useEffect, useCallback,
+  createContext, useContext, useState, useEffect, useCallback, useRef,
   type ReactNode,
 } from 'react';
 import { useColorScheme, I18nManager } from 'react-native';
@@ -16,6 +16,12 @@ import { LockOptInPrompt } from './components/LockOptInPrompt';
 import { SETTINGS_DEFAULTS, type Settings } from './models/Settings';
 import { usePrices, type UsePricesResult } from './hooks/usePrices';
 import { useFxRates } from './hooks/useFxRates';
+import { dbGetAssets } from './repositories/AssetRepository';
+import { dbGetHistory, dbUpsertDailyHistory, dbInsertHistoryBatch } from './repositories/HistoryRepository';
+import { fetchHistory, COINGECKO_HISTORY_IDS } from './services/HistoricalPriceService';
+import { buildBackfillSeries, shouldRunBackfill } from './services/HistoryBackfillService';
+import { getTotalWorth } from './services/AssetService';
+import { shouldSnapshotToday } from './services/HistoryService';
 import type { LivePrices } from './models/PriceMap';
 import type { PriceSource } from './services/PriceService';
 import type { FxSource } from './services/FxService';
@@ -45,6 +51,10 @@ interface AppCtx {
   // Data lifecycle — bumped on Clear/Import so dependent hooks reload
   dataVersion: number;
   notifyDataChanged: () => Promise<void>;
+  // True while the one-time historical net-worth backfill is in flight
+  // (CoinGecko requests + DB insert). UI uses this to show a spinner
+  // instead of the "not enough history" placeholder during that wait.
+  historyBackfilling: boolean;
 }
 
 const Ctx = createContext<AppCtx | null>(null);
@@ -64,6 +74,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   const [loaded, setLoaded]     = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
   const [showLockOptIn, setShowLockOptIn] = useState(false);
+  const [historyBackfilling, setHistoryBackfilling] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -108,6 +119,87 @@ function AppProviderInner({ children }: { children: ReactNode }) {
 
   const priceResult: UsePricesResult = usePrices(settings, dataVersion);
   const fxResult = useFxRates(settings, dataVersion);
+
+  const dailySnapRan = useRef(false);
+  useEffect(() => {
+    const prices = priceResult.prices;
+    // Only snapshot once we actually have prices (so the total is meaningful).
+    if (dailySnapRan.current) return;
+    if (!prices || Object.keys(prices).length === 0) return;
+    dailySnapRan.current = true;
+    (async () => {
+      try {
+        const [assets, history] = await Promise.all([
+          dbGetAssets(db),
+          dbGetHistory(db, 730),
+        ]);
+        const nowIso = new Date().toISOString();
+        if (shouldSnapshotToday(history, nowIso)) {
+          const total = getTotalWorth(assets, prices, fxResult.rates ?? {});
+          await dbUpsertDailyHistory(db, total, nowIso);
+        }
+      } catch {
+        // non-fatal — history is best-effort
+      }
+    })();
+  }, [db, priceResult.prices, fxResult.rates]);
+
+  const backfillRan = useRef(false);
+  useEffect(() => {
+    const prices = priceResult.prices;
+    if (backfillRan.current) return;
+    if (!prices || Object.keys(prices).length === 0) return;
+    backfillRan.current = true;
+    (async () => {
+      try {
+        const [assets, history] = await Promise.all([
+          dbGetAssets(db),
+          dbGetHistory(db, 730),
+        ]);
+        if (!shouldRunBackfill(assets.length, history.length, settings.historyBackfilledAt)) return;
+        // Self-heal: the flag was set (possibly by a previous "0 assets" early-return
+        // on first launch) without an actual backfill ever running. Clear it so the
+        // backfill logic below can re-mark it truthfully on success.
+        if (settings.historyBackfilledAt) {
+          await patchSettings({ historyBackfilledAt: '' });
+        }
+        setHistoryBackfilling(true);
+        try {
+          // Earliest acquisition → today, as an ascending day list.
+        const earliest = assets
+          .map(a => (a.purchasedAt ?? a.createdAt).slice(0, 10))
+          .sort()[0];
+        const days: string[] = [];
+        const cur = new Date(earliest + 'T00:00:00.000Z');
+        const today = new Date();
+        // Backfill up to BUT NOT INCLUDING today — today's point is owned by the
+        // daily-snapshot effect (full-ISO date), so excluding it here avoids two
+        // rows for the same calendar day (the unique index is on (date,total)).
+        const todayKey = today.toISOString().slice(0, 10);
+        while (cur.toISOString().slice(0, 10) < todayKey) {
+          days.push(cur.toISOString().slice(0, 10));
+          cur.setUTCDate(cur.getUTCDate() + 1);
+        }
+        const span = days.length;
+        // CoinGecko free tier returns up to ~365 daily points without a key.
+        const fetchDays = Math.min(span, 365);
+        const histByKey: Record<string, Record<string, number>> = {};
+        const keys = Object.keys(COINGECKO_HISTORY_IDS) as (keyof typeof COINGECKO_HISTORY_IDS)[];
+        for (const key of keys) {
+          histByKey[key] = await fetchHistory(key as never, settings.currency, fetchDays);
+        }
+        const series = buildBackfillSeries(assets, days, histByKey as never, prices, fxResult.rates ?? {});
+        await dbInsertHistoryBatch(db, series);
+        await patchSettings({ historyBackfilledAt: new Date().toISOString() });
+        } finally {
+          setHistoryBackfilling(false);
+        }
+      } catch {
+        backfillRan.current = false;   // allow retry next launch on failure
+      }
+    })();
+  }, [db, priceResult.prices, settings.historyBackfilledAt, settings.currency, fxResult.rates]);
+
   const { locked, unlock } = useAppLock(settings.lockEnabled);
 
   const handleOptInEnable = useCallback(async () => {
@@ -155,6 +247,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       fxRates:         fxResult.rates,
       fxSource:        fxResult.source,
       dataVersion, notifyDataChanged,
+      historyBackfilling,
     }}>
       {locked ? <LockScreen onUnlock={unlock} th={th} t={t} /> : children}
       <LockOptInPrompt
