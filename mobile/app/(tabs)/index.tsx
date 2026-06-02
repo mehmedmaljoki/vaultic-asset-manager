@@ -18,6 +18,7 @@ import { RADIUS, SPACE, TYPE } from '@/lib/theme/tokens';
 import { useAssets } from '@/lib/hooks/useAssets';
 import { useDebts } from '@/lib/hooks/useDebts';
 import { calcValue } from '@/lib/services/AssetService';
+import { windowByDays, percentChange, periodLabel } from '@/lib/services/ChartService';
 import { CATEGORIES } from '@/lib/models/Category';
 import type { Asset } from '@/lib/models/Asset';
 import type { HistoryPoint } from '@/lib/models/History';
@@ -259,11 +260,12 @@ function ChartDetailSheet({
     inputRange: [0, 1], outputRange: [sheetH, 0],
   });
 
-  const data = history.slice(-period);
+  const data = windowByDays(history, period, Date.now());
   const hasData = data.length >= 2;
   const first = hasData ? data[0].total : 0;
   const last  = hasData ? data[data.length - 1].total : 0;
-  const change = hasData ? ((last - first) / first * 100) : 0;
+  const pct = percentChange(data);                // null when <2 points
+  const change = pct ?? 0;
   const changePos = change >= 0;
   const minVal = hasData ? Math.min(...data.map(h => h.total)) : 0;
   const maxVal = hasData ? Math.max(...data.map(h => h.total)) : 0;
@@ -327,8 +329,8 @@ function ChartDetailSheet({
                 { label: 'Start',   value: fmt(first), color: th.tx  },
                 { label: 'End',     value: fmt(last),  color: th.tx  },
                 { label: 'Change',
-                  value: `${changePos ? '+' : ''}${change.toFixed(1)}%`,
-                  color: changePos ? th.accTx : th.redTx },
+                  value: pct == null ? '—' : `${changePos ? '+' : ''}${pct.toFixed(1)}%`,
+                  color: pct == null ? th.tx3 : (changePos ? th.accTx : th.redTx) },
               ].map(stat => (
                 <View key={stat.label} style={s.statCell}>
                   <Text style={[s.statLabel, { color: th.tx3 }]}>{stat.label}</Text>
@@ -744,11 +746,10 @@ export default function DashboardScreen() {
     .filter(c => c.value > 0)
     .sort((a, b) => b.value - a.value);
 
-  const chartData = history.slice(-60);
-  const change    = chartData.length > 1
-    ? ((chartData.at(-1)!.total - chartData[0].total) / chartData[0].total * 100).toFixed(1)
-    : '0.0';
-  const changePos = parseFloat(change) >= 0;
+  const HEADER_WINDOW_DAYS = 60;
+  const chartData = windowByDays(history, HEADER_WINDOW_DAYS, Date.now());
+  const pct       = percentChange(chartData);          // null when <2 points in window
+  const changePos = pct == null || pct >= 0;
 
   const priceSourceLabel =
     priceSource === 'live'    ? `LIVE` :
@@ -785,10 +786,10 @@ export default function DashboardScreen() {
           <View style={styles.changeRow}>
             <View style={[styles.changeBadge, { backgroundColor: changePos ? th.accBg : th.redBg }]}>
               <Text style={[styles.changeBadgeText, { color: changePos ? th.accTx : th.redTx }]}>
-                {changePos ? '▲' : '▼'} {Math.abs(parseFloat(change))}%
+                {pct == null ? '—' : `${changePos ? '▲' : '▼'} ${Math.abs(pct).toFixed(1)}%`}
               </Text>
             </View>
-            <Text style={[styles.changeSub, { color: th.tx3 }]}>{t('dash_past_days')}</Text>
+            <Text style={[styles.changeSub, { color: th.tx3 }]}>{periodLabel(HEADER_WINDOW_DAYS)}</Text>
           </View>
         </View>
 

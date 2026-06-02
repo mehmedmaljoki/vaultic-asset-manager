@@ -14,6 +14,7 @@ import { useApp } from '@/lib/AppContext';
 import { RADIUS, SPACE, TYPE } from '@/lib/theme/tokens';
 import { useAssets } from '@/lib/hooks/useAssets';
 import { calcValue } from '@/lib/services/AssetService';
+import { windowByDays, percentChange } from '@/lib/services/ChartService';
 import { CATEGORIES } from '@/lib/models/Category';
 import { CURRENCIES } from '@/lib/models/Currency';
 import { formatCurrency } from '@/lib/utils/currency';
@@ -660,7 +661,7 @@ function HistoryView({ history }: { history: HistoryPoint[] }) {
   const { th, fmt, t, privacyMode } = useApp();
   const blur = privacyMode ? '••••' : null;
   const { width } = useWindowDimensions();
-  const data = history.slice(-60);
+  const data = windowByDays(history, 60, Date.now());
   if (data.length < 2) {
     return <Text style={{ color: th.tx3, textAlign: 'center', paddingVertical: 40 }}>{t('asset_not_enough_history')}</Text>;
   }
@@ -673,8 +674,8 @@ function HistoryView({ history }: { history: HistoryPoint[] }) {
   const path = 'M' + pts.join(' L');
   const area = path + ` L${W},${H} L0,${H} Z`;
   const first = data[0].total, last = data[data.length - 1].total;
-  const change = ((last - first) / first * 100).toFixed(1);
-  const pos = parseFloat(change) >= 0;
+  const pct = percentChange(data);          // null when <2 points or first is 0
+  const pos = pct == null || pct >= 0;
 
   return (
     <View>
@@ -696,7 +697,7 @@ function HistoryView({ history }: { history: HistoryPoint[] }) {
           </View>
           <View style={{ alignItems: 'center' }}>
             <Text style={[s.histStatLabel, { color: th.tx3 }]}>{t('asset_change')}</Text>
-            <Text style={[s.histStatVal, { color: pos ? th.accTx : th.redTx }]}>{privacyMode ? '–' : `${pos ? '+' : ''}${change}%`}</Text>
+            <Text style={[s.histStatVal, { color: pct == null ? th.tx3 : (pos ? th.accTx : th.redTx) }]}>{privacyMode ? '–' : (pct == null ? '—' : `${pos ? '+' : ''}${pct.toFixed(1)}%`)}</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={[s.histStatLabel, { color: th.tx3 }]}>{t('asset_current')}</Text>
