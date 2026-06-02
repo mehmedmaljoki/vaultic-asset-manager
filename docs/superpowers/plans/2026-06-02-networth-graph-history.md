@@ -298,6 +298,88 @@ Expected: clean + green.
 cd mobile && git add app/\(tabs\)/index.tsx && git commit -m "fix: chart detail-sheet windows history by days, not row count"
 ```
 
+### Task 1.3b: Fix the same bug in the Assets "Verlauf" (HistoryView)
+
+**Files:**
+- Modify: `mobile/app/(tabs)/assets.tsx`
+
+Context: `HistoryView` ([assets.tsx:659](../../mobile/app/(tabs)/assets.tsx)) — the "Verlauf"/history sheet on the Assets screen — has the **identical** bug: `const data = history.slice(-60)` (line 663, last 60 rows not days) and unguarded `const change = ((last - first) / first * 100).toFixed(1)` (line 676), which divides by the first-ever total. It must use the same date-window + null-safe percent as the dashboard.
+
+- [ ] **Step 1: Import the helpers (if not already imported in this file)**
+
+At the top of `mobile/app/(tabs)/assets.tsx`, ensure this import exists (add if missing):
+
+```tsx
+import { windowByDays, percentChange } from '@/lib/services/ChartService';
+```
+
+- [ ] **Step 2: Replace the windowing + change derivation**
+
+Replace lines ~663‑677:
+
+```tsx
+  const data = history.slice(-60);
+  if (data.length < 2) {
+    return <Text style={{ color: th.tx3, textAlign: 'center', paddingVertical: 40 }}>{t('asset_not_enough_history')}</Text>;
+  }
+
+  const W = width - 72, H = 120;
+  const min = Math.min(...data.map(h => h.total)) * 0.97;
+  const max = Math.max(...data.map(h => h.total)) * 1.02;
+  const range = max - min || 1;
+  const pts = data.map((h, i) => `${((i / (data.length - 1)) * W).toFixed(1)},${(H - ((h.total - min) / range) * H).toFixed(1)}`);
+  const path = 'M' + pts.join(' L');
+  const area = path + ` L${W},${H} L0,${H} Z`;
+  const first = data[0].total, last = data[data.length - 1].total;
+  const change = ((last - first) / first * 100).toFixed(1);
+  const pos = parseFloat(change) >= 0;
+```
+
+with (window by a real 60-day range; percent is null-safe):
+
+```tsx
+  const data = windowByDays(history, 60, Date.now());
+  if (data.length < 2) {
+    return <Text style={{ color: th.tx3, textAlign: 'center', paddingVertical: 40 }}>{t('asset_not_enough_history')}</Text>;
+  }
+
+  const W = width - 72, H = 120;
+  const min = Math.min(...data.map(h => h.total)) * 0.97;
+  const max = Math.max(...data.map(h => h.total)) * 1.02;
+  const range = max - min || 1;
+  const pts = data.map((h, i) => `${((i / (data.length - 1)) * W).toFixed(1)},${(H - ((h.total - min) / range) * H).toFixed(1)}`);
+  const path = 'M' + pts.join(' L');
+  const area = path + ` L${W},${H} L0,${H} Z`;
+  const first = data[0].total, last = data[data.length - 1].total;
+  const pct = percentChange(data);          // null when <2 points or first is 0
+  const pos = pct == null || pct >= 0;
+```
+
+- [ ] **Step 3: Update the Change stat to handle null**
+
+Replace the change `Text` (line ~699):
+
+```tsx
+            <Text style={[s.histStatVal, { color: pos ? th.accTx : th.redTx }]}>{privacyMode ? '–' : `${pos ? '+' : ''}${change}%`}</Text>
+```
+
+with:
+
+```tsx
+            <Text style={[s.histStatVal, { color: pct == null ? th.tx3 : (pos ? th.accTx : th.redTx) }]}>{privacyMode ? '–' : (pct == null ? '—' : `${pos ? '+' : ''}${pct.toFixed(1)}%`)}</Text>
+```
+
+- [ ] **Step 4: Type-check**
+
+Run: `cd mobile && npx tsc --noEmit`
+Expected: no new errors. Confirm no remaining reference to the old `change` const in `HistoryView`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+cd mobile && git add app/\(tabs\)/assets.tsx && git commit -m "fix: Assets Verlauf (HistoryView) uses date-window + null-safe percent"
+```
+
 ### Task 1.4: Manual verification of Phase 1
 
 **Files:** none (verification)
@@ -308,6 +390,7 @@ Run the app, open the dashboard. With the existing sparse history:
 - The header percentage must no longer show thousands of % — it shows a sane value or "—".
 - The label reads "past 60 days" (or "past year" for the 1Y period in the detail sheet) and matches the selected window.
 - Open the detail sheet, switch periods (7D/30D/60D/90D/1Y) — each filters by real dates; short windows with <2 points show "—"/empty state, not a fake number.
+- Open the **Assets → Verlauf** sheet (HistoryView): its Change % is also sane/"—", not thousands of %.
 
 - [ ] **Step 2: Run the full unit suite**
 
