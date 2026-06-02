@@ -46,3 +46,31 @@ export async function dbInsertHistoryBatch(
     }
   });
 }
+
+/**
+ * Record one net-worth point for the current UTC day. If a row for today
+ * already exists, update its total to the latest value (so the day reflects
+ * the most recent prices), otherwise insert a new row.
+ */
+export async function dbUpsertDailyHistory(
+  db: SQLiteDatabase,
+  total: number,
+  nowIso: string,
+): Promise<void> {
+  const dayPrefix = nowIso.slice(0, 10); // YYYY-MM-DD
+  const existing = await db.getFirstAsync<{ id: number }>(
+    `SELECT id FROM ${TABLES.HISTORY} WHERE substr(date,1,10) = ? LIMIT 1`,
+    [dayPrefix],
+  );
+  if (existing) {
+    await db.runAsync(
+      `UPDATE ${TABLES.HISTORY} SET total = ?, date = ? WHERE id = ?`,
+      [total, nowIso, existing.id],
+    );
+  } else {
+    await db.runAsync(
+      `INSERT INTO ${TABLES.HISTORY} (date, total) VALUES (?, ?)`,
+      [nowIso, total],
+    );
+  }
+}
