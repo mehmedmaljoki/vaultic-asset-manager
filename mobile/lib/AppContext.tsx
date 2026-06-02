@@ -1,5 +1,5 @@
 import {
-  createContext, useContext, useState, useEffect, useCallback,
+  createContext, useContext, useState, useEffect, useCallback, useRef,
   type ReactNode,
 } from 'react';
 import { useColorScheme, I18nManager } from 'react-native';
@@ -16,6 +16,10 @@ import { LockOptInPrompt } from './components/LockOptInPrompt';
 import { SETTINGS_DEFAULTS, type Settings } from './models/Settings';
 import { usePrices, type UsePricesResult } from './hooks/usePrices';
 import { useFxRates } from './hooks/useFxRates';
+import { dbGetAssets } from './repositories/AssetRepository';
+import { dbGetHistory, dbUpsertDailyHistory } from './repositories/HistoryRepository';
+import { getTotalWorth } from './services/AssetService';
+import { shouldSnapshotToday } from './services/HistoryService';
 import type { LivePrices } from './models/PriceMap';
 import type { PriceSource } from './services/PriceService';
 import type { FxSource } from './services/FxService';
@@ -108,6 +112,31 @@ function AppProviderInner({ children }: { children: ReactNode }) {
 
   const priceResult: UsePricesResult = usePrices(settings, dataVersion);
   const fxResult = useFxRates(settings, dataVersion);
+
+  const dailySnapRan = useRef(false);
+  useEffect(() => {
+    const prices = priceResult.prices;
+    // Only snapshot once we actually have prices (so the total is meaningful).
+    if (dailySnapRan.current) return;
+    if (!prices || Object.keys(prices).length === 0) return;
+    dailySnapRan.current = true;
+    (async () => {
+      try {
+        const [assets, history] = await Promise.all([
+          dbGetAssets(db),
+          dbGetHistory(db, 730),
+        ]);
+        const nowIso = new Date().toISOString();
+        if (shouldSnapshotToday(history, nowIso)) {
+          const total = getTotalWorth(assets, prices, fxResult.rates ?? {});
+          await dbUpsertDailyHistory(db, total, nowIso);
+        }
+      } catch {
+        // non-fatal — history is best-effort
+      }
+    })();
+  }, [db, priceResult.prices, fxResult.rates]);
+
   const { locked, unlock } = useAppLock(settings.lockEnabled);
 
   const handleOptInEnable = useCallback(async () => {
