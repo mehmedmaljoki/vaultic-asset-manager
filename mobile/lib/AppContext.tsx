@@ -160,7 +160,11 @@ function AppProviderInner({ children }: { children: ReactNode }) {
         const days: string[] = [];
         const cur = new Date(earliest + 'T00:00:00.000Z');
         const today = new Date();
-        while (cur <= today) {
+        // Backfill up to BUT NOT INCLUDING today — today's point is owned by the
+        // daily-snapshot effect (full-ISO date), so excluding it here avoids two
+        // rows for the same calendar day (the unique index is on (date,total)).
+        const todayKey = today.toISOString().slice(0, 10);
+        while (cur.toISOString().slice(0, 10) < todayKey) {
           days.push(cur.toISOString().slice(0, 10));
           cur.setUTCDate(cur.getUTCDate() + 1);
         }
