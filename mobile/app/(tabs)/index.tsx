@@ -266,7 +266,7 @@ function ChartDetailSheet({
   const last  = hasData ? data[data.length - 1].total : 0;
   const pct = percentChange(data);                // null when <2 points
   const change = pct ?? 0;
-  const changePos = change >= 0;
+  const changePos = pct == null || pct >= 0;      // neutral (not "down") when no data
   const minVal = hasData ? Math.min(...data.map(h => h.total)) : 0;
   const maxVal = hasData ? Math.max(...data.map(h => h.total)) : 0;
 
