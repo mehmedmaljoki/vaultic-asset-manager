@@ -617,7 +617,7 @@ const s = StyleSheet.create({
   footerSub: { fontSize: 11, fontFamily: TYPE.family.regular, marginTop: 4, opacity: 0.6 },
 
   // Picker modal
-  overlay:       { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  overlay:       { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.4)' },
   pickerSheet:   { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, maxHeight: '70%' },
   pickerHandle:  { width: 40, height: 4, borderRadius: RADIUS.pill, alignSelf: 'center', marginTop: SPACE.sm + 2, marginBottom: 4 },
   pickerTitle:   { fontSize: 14, fontFamily: TYPE.family.bold, textAlign: 'center', paddingVertical: 14, borderBottomWidth: 0.5 },

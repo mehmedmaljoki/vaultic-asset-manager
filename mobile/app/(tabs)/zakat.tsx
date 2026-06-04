@@ -431,7 +431,7 @@ const s = StyleSheet.create({
   receiptTotalVal:   { fontSize: TYPE.caption.size+1, fontFamily: TYPE.family.bold },
 
   // Info sheet
-  overlay:     { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  overlay:     { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet:       { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg, maxHeight: '80%' },
   sheetHandle: { width: 40, height: 4, borderRadius: RADIUS.pill, alignSelf: 'center', marginTop: SPACE.md, marginBottom: SPACE.xs },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACE.xl, paddingVertical: 14, borderBottomWidth: 0.5 },

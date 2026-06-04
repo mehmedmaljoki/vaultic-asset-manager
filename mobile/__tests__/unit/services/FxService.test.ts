@@ -1,7 +1,7 @@
 import { fetchFxRates } from '../../../lib/services/FxService';
 
 const mockFetch = jest.fn();
-global.fetch = mockFetch as unknown as typeof fetch;
+(globalThis as any).fetch = mockFetch as unknown as typeof fetch;
 
 const mockGetCache = jest.fn();
 const mockUpsert   = jest.fn();

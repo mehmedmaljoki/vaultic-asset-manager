@@ -4,7 +4,7 @@
     "slug": "vaultic",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/adaptive-icon.png",
+    "icon": "./assets/icon.png",
     "scheme": "vaultic",
     "userInterfaceStyle": "automatic",
     "splash": {
